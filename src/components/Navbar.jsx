@@ -18,13 +18,14 @@ export default function Navbar() {
         className="flex items-center gap-3 group cursor-pointer select-none"
       >
         <div className="relative w-9 h-9 flex items-center justify-center">
-          <div className="absolute inset-0 rounded-full bg-[#00E8C8]/25 blur-lg group-hover:blur-2xl transition-all duration-500"></div>
-          <div className="relative text-xl text-[#00FFA3] drop-shadow-[0_0_10px_rgba(0,255,163,0.6)] group-hover:scale-110 transition-transform duration-500">
-            🛡️
-          </div>
+          <img
+            src="/havenox-logo.png"
+            alt="HavenOx Logo"
+            className="w-9 h-9 object-contain hover:scale-110 transition-transform duration-300"
+          />
         </div>
         <h1 className="text-xl font-bold bg-gradient-to-r from-[#00FFA3] via-[#00E8C8] to-[#00FFA3] bg-clip-text text-transparent animate-pulse">
-          TradeHaven
+          HavenOx
         </h1>
       </Link>
 

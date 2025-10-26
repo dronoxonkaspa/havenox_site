@@ -1,9 +1,37 @@
-import { useState } from "react";
+// src/pages/Marketplace.jsx
+import { useState, useMemo } from "react";
 import { useListings } from "../context/ListingsContext";
 
 export default function Marketplace() {
   const { listings, loading } = useListings();
+
   const [verifiedOnly, setVerifiedOnly] = useState(false);
+  const [sortBy, setSortBy] = useState("default");
+
+  // Filter first
+  const filtered = useMemo(() => {
+    const data = verifiedOnly
+      ? listings.filter((l) => !!l.signature)
+      : listings;
+    return data;
+  }, [verifiedOnly, listings]);
+
+  // Then sort
+  const sorted = useMemo(() => {
+    const arr = [...filtered];
+    switch (sortBy) {
+      case "price-asc":
+        return arr.sort((a, b) => (a.price || 0) - (b.price || 0));
+      case "price-desc":
+        return arr.sort((a, b) => (b.price || 0) - (a.price || 0));
+      case "name-asc":
+        return arr.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+      case "name-desc":
+        return arr.sort((a, b) => (b.name || "").localeCompare(a.name || ""));
+      default:
+        return arr;
+    }
+  }, [filtered, sortBy]);
 
   if (loading)
     return (
@@ -12,38 +40,47 @@ export default function Marketplace() {
       </div>
     );
 
-  const filtered = verifiedOnly
-    ? listings.filter((l) => !!l.signature)
-    : listings;
-
   return (
     <div className="min-h-screen pt-24 px-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-center mb-8">
-        <h2 className="text-3xl font-bold text-[#00E8C8] mb-4 md:mb-0">
-          Marketplace
-        </h2>
-        <label className="flex items-center gap-2 text-sm text-gray-400 select-none cursor-pointer">
-          <input
-            type="checkbox"
-            checked={verifiedOnly}
-            onChange={(e) => setVerifiedOnly(e.target.checked)}
-            className="accent-[#00E8C8] w-4 h-4"
-          />
-          Show verified only
-        </label>
+      <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+        <h2 className="text-3xl font-bold text-[#00E8C8]">Marketplace</h2>
+
+        {/* Filters */}
+        <div className="flex items-center gap-6">
+          <label className="flex items-center gap-2 text-sm text-gray-400 select-none cursor-pointer">
+            <input
+              type="checkbox"
+              checked={verifiedOnly}
+              onChange={(e) => setVerifiedOnly(e.target.checked)}
+              className="accent-[#00E8C8] w-4 h-4"
+            />
+            Show verified only
+          </label>
+
+          {/* Sort by dropdown */}
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="bg-black/40 border border-[#00E8C8]/30 text-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-[#00E8C8]"
+          >
+            <option value="default">Sort by</option>
+            <option value="price-asc">Price: Low → High</option>
+            <option value="price-desc">Price: High → Low</option>
+            <option value="name-asc">Name: A → Z</option>
+            <option value="name-desc">Name: Z → A</option>
+          </select>
+        </div>
       </div>
 
       {/* Listings Grid */}
-      {filtered.length === 0 ? (
+      {sorted.length === 0 ? (
         <p className="text-center text-gray-500">
-          {verifiedOnly
-            ? "No verified listings found."
-            : "No listings yet — be the first to create one!"}
+          No listings yet — be the first to create one!
         </p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
-          {filtered.map((item) => (
+          {sorted.map((item) => (
             <div
               key={item.id}
               className={`relative bg-black/40 border rounded-lg p-4 transition-all duration-300 hover:shadow-[0_0_25px_rgba(0,232,200,0.4)] ${
@@ -88,18 +125,20 @@ export default function Marketplace() {
               </p>
 
               {/* Price */}
-              <p className="text-[#00E8C8] font-bold mb-3">{item.price} KAS</p>
+              <p className="text-[#00E8C8] font-bold mb-3">
+                {item.price} KAS
+              </p>
 
               {/* Status Badge */}
               <p
                 className={`text-xs mb-3 ${
                   item.status === "complete"
-                    ? "text-[#00FFA3]" // green
+                    ? "text-[#00FFA3]"
                     : item.status === "pending"
-                    ? "text-yellow-400" // yellow
+                    ? "text-yellow-400"
                     : item.status === "expired"
-                    ? "text-red-500" // red
-                    : "text-gray-500" // default
+                    ? "text-red-500"
+                    : "text-gray-500"
                 }`}
               >
                 {item.status ? `Status: ${item.status}` : ""}
