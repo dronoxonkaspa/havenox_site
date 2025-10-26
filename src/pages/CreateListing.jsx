@@ -99,7 +99,7 @@ export default function CreateListing() {
     if (!address) return setMsg("⚠️ Connect your wallet first.");
     try {
       setMsg("Requesting signature...");
-      let message = `Dronox Escrow Listing Verification\n\nNetwork: ${formData.network}\nContract: ${formData.contract}\nToken ID: ${formData.tokenId}\nWallet: ${address}\nTimestamp: ${Date.now()}`;
+      let message = `HavenOx Escrow Listing Verification\n\nNetwork: ${formData.network}\nContract: ${formData.contract}\nToken ID: ${formData.tokenId}\nWallet: ${address}\nTimestamp: ${Date.now()}`;
 
       if (formData.network === "EVM") {
         const signature = await window.ethereum.request({

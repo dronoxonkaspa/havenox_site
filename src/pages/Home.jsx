@@ -54,7 +54,7 @@ export default function Home() {
       {/* Hero */}
       <main className="z-20 max-w-3xl px-6 relative">
         <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-[#00FFA3] via-[#00E8C8] to-[#00FFA3] bg-clip-text text-transparent mb-6 neon-text">
-          Dronox Core Escrow Network
+          HavenOx Core Escrow Network
         </h1>
         <p className="text-gray-300 text-lg md:text-xl leading-relaxed mb-10 neon-text">
           Secure peer-to-peer NFT and token trades powered by Kaspa escrow.

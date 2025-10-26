@@ -169,7 +169,7 @@ export default function Profile() {
             <div className="mt-6 text-center">
               <CSVLink
                 data={trades}
-                filename="dronox_trade_history.csv"
+                filename="HavenOx_trade_history.csv"
                 className="btn-neon px-6 py-2 rounded-full font-semibold"
               >
                 Download Trade History CSV
