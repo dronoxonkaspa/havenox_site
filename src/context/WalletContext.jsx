@@ -3,9 +3,13 @@ import { createContext, useContext, useState } from "react";
 
 const WalletContext = createContext();
 
-// ✅ Use environment variable fallback for flexibility
+// ✅ Environment variable fallback
 const API_BASE =
   import.meta.env.VITE_API_BASE || "https://drono-guard-bot.onrender.com";
+const TREASURY_ADDRESS =
+  import.meta.env.VITE_TREASURY_ADDRESS ||
+  "kaspa:qpz39pyz2ra8g0jtq7f0x9nrdzrllsenx282k5dqv8kgdmw7hsm9zcguzxr5y";
+const FEE_RATE = 0.02; // 2%
 
 export function WalletProvider({ children }) {
   const [address, setAddress] = useState("");
@@ -25,16 +29,25 @@ export function WalletProvider({ children }) {
         return signature;
       } else {
         // ✅ MetaMask or EVM compatible signature
+        let eth = window.ethereum;
+        if (eth?.providers?.length) {
+          // 🔍 find the real MetaMask provider among multiple injected wallets
+          eth = eth.providers.find((p) => p.isMetaMask) || eth.providers[0];
+        }
+
+        if (!eth || !eth.request)
+          throw new Error("MetaMask not detected. Please enable it.");
+
         try {
-          const signature = await window.ethereum.request({
+          const signature = await eth.request({
             method: "personal_sign",
             params: [msg, address],
           });
           console.log("✅ MetaMask signature:", signature);
           return signature;
         } catch (err) {
-          console.warn("⚠️ Retrying MetaMask with reversed params:", err.message);
-          const signature = await window.ethereum.request({
+          console.warn("⚠️ Retrying MetaMask sign (reversed params)");
+          const signature = await eth.request({
             method: "personal_sign",
             params: [address, msg],
           });
@@ -48,10 +61,10 @@ export function WalletProvider({ children }) {
     }
   }
 
-  // ---- 🔒 Secure login with signature verification ----
+  // ---- 🔒 Secure login with backend verification ----
   async function secureLogin(walletType, currentAddress) {
     try {
-      const message = `Sign this message to verify ownership of ${currentAddress} on Havenox. Nonce:${Date.now()}`;
+      const message = `Sign this message to verify ownership of ${currentAddress} on HavenOx. Nonce:${Date.now()}`;
       const signature = await signMessage(walletType, message);
 
       const payload = { address: currentAddress, signature, message };
@@ -92,7 +105,6 @@ export function WalletProvider({ children }) {
       setAddress(currentAddress);
       setProvider("Kasware / KDX");
 
-      // ✅ Wait for React state to settle
       await new Promise((resolve) => setTimeout(resolve, 100));
       await secureLogin("Kasware / KDX", currentAddress);
     } catch (err) {
@@ -101,20 +113,32 @@ export function WalletProvider({ children }) {
     }
   }
 
-  // ---- 🦊 Connect MetaMask / EVM ----
+  // ---- 🦊 Connect MetaMask / EVM (multi-provider safe) ----
   async function connectMetamask() {
     try {
-      if (!window.ethereum) throw new Error("MetaMask not installed.");
-      const accounts = await window.ethereum.request({
-        method: "eth_requestAccounts",
-      });
+      // 🔄 Prevent Kasware interference
+      if (window.kasware || window.kdx || window.kaspium) {
+        console.log("🔄 Detected Kasware; reloading to reset provider.");
+        disconnectWallet();
+        window.location.reload();
+        return;
+      }
+
+      let eth = window.ethereum;
+      if (eth?.providers?.length) {
+        eth = eth.providers.find((p) => p.isMetaMask) || eth.providers[0];
+      }
+
+      if (!eth || !eth.request)
+        throw new Error("MetaMask not detected. Please ensure it’s active.");
+
+      const accounts = await eth.request({ method: "eth_requestAccounts" });
       if (!accounts?.length) throw new Error("No MetaMask accounts found.");
 
       const currentAddress = accounts[0];
       setAddress(currentAddress);
       setProvider("MetaMask / EVM");
 
-      // ✅ Wait for React state to settle
       await new Promise((resolve) => setTimeout(resolve, 100));
       await secureLogin("MetaMask / EVM", currentAddress);
     } catch (err) {
@@ -129,7 +153,7 @@ export function WalletProvider({ children }) {
     setProvider("");
     setToken("");
     localStorage.removeItem("havenox_token");
-    alert("🔌 Wallet disconnected.");
+    window.location.reload();
   }
 
   return (
@@ -141,6 +165,8 @@ export function WalletProvider({ children }) {
         connectKasware,
         connectMetamask,
         disconnectWallet,
+        treasury: TREASURY_ADDRESS,
+        feeRate: FEE_RATE,
       }}
     >
       {children}

@@ -1,3 +1,4 @@
+// src/components/Navbar.jsx
 import { Link } from "react-router-dom";
 import { useWallet } from "../context/WalletContext";
 
@@ -45,6 +46,18 @@ export default function Navbar() {
           className="hover:text-[#00E8C8] transition duration-200"
         >
           Create
+        </Link>
+        <Link
+          to="/mint"
+          className="hover:text-[#00E8C8] transition duration-200"
+        >
+          Mint
+        </Link>
+        <Link
+          to="/create-tent"
+          className="hover:text-[#00E8C8] transition duration-200"
+        >
+          P2P Tent Trade
         </Link>
         <Link
           to="/profile"

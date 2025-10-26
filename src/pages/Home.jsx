@@ -1,4 +1,6 @@
+// src/pages/Home.jsx
 import { useEffect } from "react";
+import { Link } from "react-router-dom";
 
 export default function Home() {
   useEffect(() => {
@@ -61,13 +63,33 @@ export default function Home() {
           Create offers, trade safely, or list NFTs for sale or swap.
         </p>
 
-        <div className="flex flex-col sm:flex-row justify-center gap-6 z-30 relative">
-          <a href="/marketplace" className="btn-neon px-10 py-3 font-semibold relative z-30">
-            View Marketplace
-          </a>
-          <a href="/create" className="btn-neon px-10 py-3 font-semibold border-[#00FFA3] text-[#00FFA3] relative z-30">
-            Create Listing
-          </a>
+        {/* CTA Buttons */}
+        <div className="flex flex-col items-center justify-center gap-6 z-30 relative">
+          <Link
+            to="/marketplace"
+            className="btn-neon px-10 py-3 font-semibold border border-[#00E8C8]/50 text-[#00FFA3] hover:bg-[#00E8C8]/20 transition"
+          >
+            🛒 View Marketplace
+          </Link>
+          <Link
+            to="/create"
+            className="btn-neon px-10 py-3 font-semibold border border-[#00E8C8]/50 text-[#00FFA3] hover:bg-[#00E8C8]/20 transition"
+          >
+            ✨ Create Listing
+          </Link>
+
+          {/* 🌟 Central Highlighted Button */}
+          <Link
+            to="/create-tent"
+            className="relative px-12 py-5 mt-6 rounded-full font-bold text-2xl text-[#00FFA3] border border-[#00E8C8]/70 bg-black/40 backdrop-blur-lg shadow-[0_0_25px_#00E8C8] hover:shadow-[0_0_45px_#00FFA3] hover:bg-[#00E8C8]/20 transition-all duration-500 animate-pulse"
+          >
+            🎪 Start P2P Tent Trade
+            <span className="absolute inset-0 rounded-full bg-[#00E8C8]/30 blur-xl opacity-50 -z-10 animate-pulse"></span>
+          </Link>
+
+          <p className="mt-6 text-[#00E8C8]/80 text-sm sm:text-base">
+            Trade securely in real-time using the HavenOx Tent system.
+          </p>
         </div>
       </main>
     </div>
