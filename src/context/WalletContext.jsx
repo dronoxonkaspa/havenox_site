@@ -44,7 +44,6 @@ function getMetaMaskProvider() {
   return ethereum.isMetaMask ? ethereum : undefined;
 }
 
-// ✅ Environment variable fallback
 const API_BASE =
   import.meta.env.VITE_API_BASE || "https://drono-guard-bot.onrender.com";
 const TREASURY_ADDRESS =
@@ -57,7 +56,7 @@ export function WalletProvider({ children }) {
   const [provider, setProvider] = useState("");
   const [token, setToken] = useState(() => getStoredToken());
 
-  async function signMessage(walletType, msg) {
+  async function signMessage(walletType, msg, walletAddress = "") {
     try {
       if (walletType === "Kasware / KDX") {
         const kas = getKaswareProvider();
@@ -73,7 +72,7 @@ export function WalletProvider({ children }) {
         try {
           const signature = await eth.request({
             method: "personal_sign",
-            params: [msg, address],
+            params: [msg, walletAddress || address],
           });
           console.log("✅ MetaMask signature:", signature);
           return signature;
@@ -81,7 +80,7 @@ export function WalletProvider({ children }) {
           console.warn("⚠️ Retrying MetaMask sign (reversed params)", err);
           const signature = await eth.request({
             method: "personal_sign",
-            params: [address, msg],
+            params: [walletAddress || address, msg],
           });
           console.log("✅ MetaMask signature (reversed):", signature);
           return signature;
@@ -96,7 +95,7 @@ export function WalletProvider({ children }) {
   async function secureLogin(walletType, currentAddress) {
     try {
       const message = `Sign this message to verify ownership of ${currentAddress} on HavenOx. Nonce:${Date.now()}`;
-      const signature = await signMessage(walletType, message);
+      const signature = await signMessage(walletType, message, currentAddress);
 
       const payload = { address: currentAddress, signature, message };
       console.log("📤 Sending verification payload:", payload);

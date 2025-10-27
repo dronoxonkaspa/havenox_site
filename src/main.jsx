@@ -26,12 +26,20 @@ function safeInitIntercom() {
 safeInitIntercom();
 
 const baseUrl = import.meta.env.BASE_URL ?? "/";
-const basename =
-  baseUrl === "/"
-    ? "/"
-    : baseUrl.endsWith("/")
-    ? baseUrl.slice(0, -1)
-    : baseUrl;
+
+function normaliseBase(path) {
+  if (!path) return "/";
+  if (path === "." || path === "./") return "/";
+  try {
+    const url = new URL(path, "http://localhost");
+    const cleaned = url.pathname.replace(/\/+$/, "");
+    return cleaned || "/";
+  } catch {
+    return path.endsWith("/") ? path.slice(0, -1) || "/" : path;
+  }
+}
+
+const basename = normaliseBase(baseUrl);
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
