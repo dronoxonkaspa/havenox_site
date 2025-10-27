@@ -1,6 +1,6 @@
 // src/pages/LiveTent.jsx
-import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useParams, useSearchParams } from "react-router-dom";
 import { useWallet } from "../context/WalletContext";
 
 const API_BASE =
@@ -8,6 +8,7 @@ const API_BASE =
 
 export default function LiveTent() {
   const [searchParams] = useSearchParams();
+  const params = useParams();
   const { address, connectMetamask, connectKasware } = useWallet();
 
   const [tentData, setTentData] = useState(null);
@@ -15,16 +16,23 @@ export default function LiveTent() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("⏳ Setting up your Live Tent...");
 
-  const tentId = window.location.pathname.split("/").pop();
+  const tentId = useMemo(() => params.id?.trim() ?? "", [params.id]);
   const password = searchParams.get("pw");
 
   // 🔄 Fetch tent data
   useEffect(() => {
-    async function fetchTent() {
+    async function fetchTent(signal) {
+      if (!tentId) {
+        setError("Invalid tent link.");
+        setLoading(false);
+        return;
+      }
+
       try {
         const res = await fetch(`${API_BASE}/tent/join`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          signal,
           body: JSON.stringify({
             tent_id: tentId,
             password,
@@ -43,13 +51,18 @@ export default function LiveTent() {
           setError("Invalid or expired tent.");
         }
       } catch (err) {
+        if (err.name === "AbortError") return;
         console.error("Tent fetch error:", err);
         setError("Error loading tent.");
       } finally {
         setLoading(false);
       }
     }
-    fetchTent();
+
+    const abortController = new AbortController();
+    fetchTent(abortController.signal);
+
+    return () => abortController.abort();
   }, [tentId, password, address]);
 
   // ✅ Complete trade
@@ -76,82 +89,77 @@ export default function LiveTent() {
     }
   }
 
-  // 🧩 Helper: safe status text
-  const safeStatus = tentData?.status
-    ? tentData.status.toUpperCase()
-    : "PENDING";
+  // 🧩 UI Rendering
+  if (loading)
+    return (
+      <div className="p-8 text-center text-gray-400 animate-pulse">
+        {message}
+      </div>
+    );
+
+  if (error)
+    return (
+      <div className="p-8 text-center text-red-500 font-semibold">
+        ❌ {error}
+      </div>
+    );
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#00040A] text-[#C0C7C9] px-4 py-12 text-center">
-      <h1 className="text-3xl font-extrabold mb-8 text-[#00FFA3] tracking-wide drop-shadow-lg">
-        🎪 HavenOx Live Trading Tent
-      </h1>
+    <div className="p-8 flex flex-col items-center text-center">
+      <h1 className="text-2xl font-bold mb-4 text-white">🎪 Live Tent</h1>
 
-      {loading ? (
-        <div className="animate-pulse text-[#00FFA3] text-lg">{message}</div>
-      ) : error ? (
-        <p className="text-red-400 font-medium">{error}</p>
-      ) : tentData ? (
-        <div className="border border-[#00E8C8]/40 rounded-2xl p-8 w-full max-w-lg bg-black/30 shadow-lg backdrop-blur-lg">
-          <div className="space-y-2 text-sm sm:text-base text-left">
-            <p>
-              <span className="text-[#00E8C8] font-semibold">Tent ID:</span>{" "}
-              {tentData.id || "N/A"}
-            </p>
-            <p>
-              <span className="text-[#00E8C8] font-semibold">Host Wallet:</span>{" "}
-              <span className="break-all">{tentData.host_wallet || "N/A"}</span>
-            </p>
-            <p>
-              <span className="text-[#00E8C8] font-semibold">Price:</span>{" "}
-              {tentData.price || 0} KAS
-            </p>
-            <p>
-              <span className="text-[#00E8C8] font-semibold">Status:</span>{" "}
-              <span
-                className={`font-bold ${
-                  tentData.status === "complete"
-                    ? "text-[#00FFA3]"
-                    : "text-yellow-400"
-                }`}
-              >
-                {safeStatus}
-              </span>
-            </p>
-          </div>
+      <p className="text-gray-300 mb-6">{message}</p>
 
-          <div className="mt-6 flex flex-wrap gap-3 justify-center">
-            {!address ? (
-              <>
-                <button
-                  onClick={connectKasware}
-                  className="px-5 py-2 rounded-full bg-[#00FFA3]/20 border border-[#00E8C8]/40 hover:bg-[#00E8C8]/30 transition"
-                >
-                  Connect Kasware / KDX
-                </button>
-                <button
-                  onClick={connectMetamask}
-                  className="px-5 py-2 rounded-full bg-[#00FFA3]/20 border border-[#00E8C8]/40 hover:bg-[#00E8C8]/30 transition"
-                >
-                  Connect MetaMask
-                </button>
-              </>
-            ) : tentData.status === "complete" ? (
-              <p className="text-[#00FFA3] font-semibold mt-2">
-                ✅ Trade finalized successfully!
-              </p>
-            ) : (
-              <button
-                onClick={handleComplete}
-                className="px-6 py-2 bg-[#00FFA3]/30 border border-[#00E8C8]/50 rounded-full hover:bg-[#00E8C8]/60 hover:text-black font-semibold transition"
-              >
-                Finalize Trade
-              </button>
-            )}
-          </div>
+      {tentData && (
+        <div className="bg-gray-800 p-6 rounded-xl shadow-lg max-w-md w-full">
+          <p className="text-sm text-gray-400 mb-2">
+            Tent ID: <span className="text-white">{tentId}</span>
+          </p>
+          <p className="text-sm text-gray-400 mb-2">
+            Host:{" "}
+            <span className="text-white">
+              {tentData.host_wallet || "Unknown"}
+            </span>
+          </p>
+          <p className="text-sm text-gray-400 mb-2">
+            Guest:{" "}
+            <span className="text-white">
+              {tentData.guest_wallet || address || "Not connected"}
+            </span>
+          </p>
+          <p className="text-sm text-gray-400 mb-4">
+            Status:{" "}
+            <span className="text-white capitalize">
+              {tentData.status || "unknown"}
+            </span>
+          </p>
+
+          {tentData.status !== "complete" && (
+            <button
+              onClick={handleComplete}
+              className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition"
+            >
+              ✅ Complete Trade
+            </button>
+          )}
         </div>
-      ) : (
-        <p className="text-gray-400">{message}</p>
+      )}
+
+      {!address && (
+        <div className="mt-8 flex gap-4">
+          <button
+            onClick={connectKasware}
+            className="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg text-white"
+          >
+            Connect Kasware
+          </button>
+          <button
+            onClick={connectMetamask}
+            className="bg-yellow-500 hover:bg-yellow-600 px-4 py-2 rounded-lg text-white"
+          >
+            Connect MetaMask
+          </button>
+        </div>
       )}
     </div>
   );
