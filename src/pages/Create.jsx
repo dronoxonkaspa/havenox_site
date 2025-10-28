@@ -1,12 +1,11 @@
 import { useState } from "react";
-import { ethers } from "ethers";
-import { supabase } from "../lib/supabaseClient";
 import { useListings } from "../context/ListingsContext";
 import { useWallet } from "../context/WalletContext";
 
 export default function Create() {
   const { address } = useWallet();
   const { addListing } = useListings();
+
   const [formData, setFormData] = useState({
     name: "",
     type: "",
@@ -19,10 +18,13 @@ export default function Create() {
 
   const LISTING_FEE = 10; // 10 KAS non-refundable fee
 
-  const handleChange = (e) => {
+  function handleChange(e) {
     const { name, value, type, checked } = e.target;
-    setFormData({ ...formData, [name]: type === "checkbox" ? checked : value });
-  };
+    setFormData({
+      ...formData,
+      [name]: type === "checkbox" ? checked : value,
+    });
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -34,24 +36,25 @@ export default function Create() {
       setLoading(true);
       setMsg("Posting listing...");
 
-      // Insert into Supabase
-      const { error } = await supabase.from("listings").insert([
-        {
-          name: formData.name,
-          type: formData.type,
-          price: parseFloat(formData.price),
-          image_url: formData.image_url,
-          trade: formData.trade,
-          listing_fee: LISTING_FEE,
-          network: "Kaspa",
-        },
-      ]);
+      await addListing({
+        name: formData.name,
+        type: formData.type,
+        price: parseFloat(formData.price),
+        image_url: formData.image_url,
+        trade: formData.trade,
+        listing_fee: LISTING_FEE,
+        network: "Kaspa",
+        seller: address,
+      });
 
-      if (error) throw error;
-
-      await addListing();
       setMsg("✅ Listing created (10 KAS non-refundable fee recorded).");
-      setFormData({ name: "", type: "", price: "", image_url: "", trade: false });
+      setFormData({
+        name: "",
+        type: "",
+        price: "",
+        image_url: "",
+        trade: false,
+      });
     } catch (err) {
       console.error(err);
       setMsg("⚠️ " + err.message);
@@ -75,46 +78,52 @@ export default function Create() {
             className="mb-4 w-full"
             required
           />
+
           <input
             type="text"
             name="type"
-            placeholder="NFT Type (Mythic, Rare, etc.)"
+            placeholder="Type (e.g., Art, Collectible)"
             value={formData.type}
             onChange={handleChange}
             className="mb-4 w-full"
           />
+
           <input
             type="number"
             name="price"
-            placeholder="Price in KAS"
+            placeholder="Price (KAS)"
             value={formData.price}
             onChange={handleChange}
             className="mb-4 w-full"
             required
           />
+
           <input
             type="text"
             name="image_url"
             placeholder="Image URL"
             value={formData.image_url}
             onChange={handleChange}
-            className="mb-6 w-full"
+            className="mb-4 w-full"
           />
 
-          {/* Fee notice */}
-          <p className="text-sm text-gray-400 mb-6">
-            A <span className="text-[#00FFA3] font-semibold">10 KAS</span>{" "}
-            non-refundable listing fee will be charged when posting.
-          </p>
+          <label className="flex items-center mb-4">
+            <input
+              type="checkbox"
+              name="trade"
+              checked={formData.trade}
+              onChange={handleChange}
+              className="mr-2"
+            />
+            Enable Trading Option
+          </label>
 
           <button
             type="submit"
-            disabled={!address || loading}
-            className={`btn-neon w-full py-3 font-semibold ${
-              !address ? "opacity-40 cursor-not-allowed" : ""
-            }`}
+            disabled={loading}
+            className="btn-primary w-full"
           >
-            {loading ? "Submitting..." : "Create Listing"}
+            {loading ? "Posting..." : "Create Listing"}
           </button>
         </form>
 

@@ -1,5 +1,11 @@
-import { createContext, useContext, useEffect, useState } from "react";
-import { supabase } from "../lib/supabaseClient";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
+import { createListing, getListings } from "../lib/apiClient";
 
 const ListingsContext = createContext();
 
@@ -7,39 +13,47 @@ export function ListingsProvider({ children }) {
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  async function fetchListings() {
-    const { data, error } = await supabase
-      .from("listings")
-      .select("*")
-      .order("created_at", { ascending: false });
-    if (error) console.error(error);
-    else setListings(data || []);
-    setLoading(false);
-  }
-
-  useEffect(() => {
-    fetchListings();
-
-    // 🔴 Realtime subscription
-    const channel = supabase
-      .channel("realtime:listings")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "listings" },
-        () => fetchListings()
-      )
-      .subscribe();
-
-    return () => supabase.removeChannel(channel);
+  // 🧭 Fetch listings from HavenOx API
+  const fetchListings = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await getListings();
+      const items = Array.isArray(data?.listings) ? data.listings : [];
+      setListings(items);
+    } catch (err) {
+      console.error("Failed to load listings:", err);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
+  // 🔁 Refresh listings every 20s
+  useEffect(() => {
+    fetchListings();
+    const interval = setInterval(fetchListings, 20000);
+    return () => clearInterval(interval);
+  }, [fetchListings]);
+
+  // ➕ Create new listing
+  const addListing = useCallback(
+    async (payload) => {
+      const response = await createListing(payload);
+      await fetchListings();
+      return response;
+    },
+    [fetchListings]
+  );
+
   return (
-    <ListingsContext.Provider value={{ listings, loading, fetchListings }}>
+    <ListingsContext.Provider
+      value={{ listings, loading, fetchListings, addListing }}
+    >
       {children}
     </ListingsContext.Provider>
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useListings() {
   return useContext(ListingsContext);
 }

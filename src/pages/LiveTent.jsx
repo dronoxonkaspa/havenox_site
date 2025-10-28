@@ -1,33 +1,27 @@
-// src/pages/LiveTent.jsx
+// LiveTent.jsx — HavenOx NFT Tent with signing + verification
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { useWallet } from "../context/WalletContext";
 
-const API_BASE =
-  import.meta.env.VITE_API_BASE || "https://drono-guard-bot.onrender.com";
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000";
 
 export default function LiveTent() {
   const [searchParams] = useSearchParams();
   const params = useParams();
-  const { address, connectMetamask, connectKasware } = useWallet();
+  const { address, connectKasware } = useWallet();
 
   const [tentData, setTentData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("⏳ Preparing NFT Tent...");
   const [error, setError] = useState("");
-  const [message, setMessage] = useState("⏳ Setting up your Live Tent...");
+  const [verified, setVerified] = useState(false);
 
   const tentId = useMemo(() => params.id?.trim() ?? "", [params.id]);
   const password = searchParams.get("pw");
 
-  // 🔄 Fetch tent data
+  // 🪶 Load Tent Session
   useEffect(() => {
-    async function fetchTent(signal) {
-      if (!tentId) {
-        setError("Invalid tent link.");
-        setLoading(false);
-        return;
-      }
-
+    async function joinTent(signal) {
+      if (!tentId) return;
       try {
         const res = await fetch(`${API_BASE}/tent/join`, {
           method: "POST",
@@ -36,36 +30,79 @@ export default function LiveTent() {
           body: JSON.stringify({
             tent_id: tentId,
             password,
-            guest_wallet: address || "",
-            asset_guest: "NFT/Token",
+            guest_wallet: address || "pending",
+            nft_guest: { name: "NFT placeholder" },
           }),
         });
 
         const data = await res.json();
-
-        if (data.status === "joined" || data.status === "pending") {
-          setTentData(data.tent || data);
-          setMessage("✅ Connected to Live Tent");
+        if (data.status === "joined") {
+          setTentData(data);
+          setMessage("✅ Joined NFT Tent");
         } else {
-          console.warn("Tent join error:", data);
-          setError("Invalid or expired tent.");
+          setError(data.message || "Failed to join tent.");
         }
       } catch (err) {
-        if (err.name === "AbortError") return;
-        console.error("Tent fetch error:", err);
-        setError("Error loading tent.");
-      } finally {
-        setLoading(false);
+        if (err.name !== "AbortError") setError("Error joining tent.");
       }
     }
 
-    const abortController = new AbortController();
-    fetchTent(abortController.signal);
-
-    return () => abortController.abort();
+    const controller = new AbortController();
+    joinTent(controller.signal);
+    return () => controller.abort();
   }, [tentId, password, address]);
 
-  // ✅ Complete trade
+  // 🖋️ Sign + Verify Tent Participation
+  async function handleVerify() {
+    try {
+      if (!address) {
+        alert("⚠️ Connect Kasware or KDX first.");
+        return;
+      }
+
+      const msg = `I, ${address}, confirm participation in Tent ${tentId} at ${new Date().toISOString()}`;
+      let sig = "";
+
+      const kas = window.kasware || window.kdx || window.kaspium;
+      if (!kas) throw new Error("Kasware-compatible wallet not detected.");
+
+      // Try signMessage first, fallback to requestSignature
+      if (typeof kas.signMessage === "function") {
+        sig = await kas.signMessage(msg);
+      } else if (typeof kas.requestSignature === "function") {
+        const response = await kas.requestSignature({ message: msg });
+        sig = response?.signature || response;
+      } else {
+        throw new Error("No valid signing method found in wallet.");
+      }
+
+      const res = await fetch(`${API_BASE}/verify_signature`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          address,
+          message: msg,
+          signature: sig,
+          tent_id: tentId,
+        }),
+      });
+
+      const data = await res.json();
+      console.log("Verification result:", data);
+
+      if (data.verified || data.status === "verified") {
+        setVerified(true);
+        alert("✅ Signature verified and stored on backend.");
+      } else {
+        alert("❌ Signature invalid or unverified.");
+      }
+    } catch (err) {
+      console.error("Verify error:", err);
+      alert("Error verifying signature: " + err.message);
+    }
+  }
+
+  // ✅ Complete Trade
   async function handleComplete() {
     try {
       setMessage("⏳ Finalizing trade...");
@@ -74,29 +111,18 @@ export default function LiveTent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tent_id: tentId }),
       });
-
       const data = await res.json();
       if (data.status === "complete") {
-        setMessage("✅ Trade completed successfully!");
-        setTentData({ ...tentData, status: "complete" });
+        setMessage("✅ NFT trade finalized!");
       } else {
-        console.warn("Trade completion error:", data);
-        setError("⚠️ Could not complete trade.");
+        setError("Trade could not complete.");
       }
     } catch (err) {
-      console.error("Complete trade error:", err);
-      setError("Error finalizing trade.");
+      setError("Trade finalize error.");
     }
   }
 
-  // 🧩 UI Rendering
-  if (loading)
-    return (
-      <div className="p-8 text-center text-gray-400 animate-pulse">
-        {message}
-      </div>
-    );
-
+  // ❌ Error UI
   if (error)
     return (
       <div className="p-8 text-center text-red-500 font-semibold">
@@ -104,40 +130,38 @@ export default function LiveTent() {
       </div>
     );
 
+  // 🧠 Main UI
   return (
     <div className="p-8 flex flex-col items-center text-center">
-      <h1 className="text-2xl font-bold mb-4 text-white">🎪 Live Tent</h1>
-
-      <p className="text-gray-300 mb-6">{message}</p>
+      <h1 className="text-2xl font-bold mb-4 text-white">🎨 HavenOx NFT Tent</h1>
+      <p className="text-gray-300 mb-4">{message}</p>
 
       {tentData && (
         <div className="bg-gray-800 p-6 rounded-xl shadow-lg max-w-md w-full">
+          <p className="text-sm text-gray-400 mb-2">Tent ID: {tentId}</p>
           <p className="text-sm text-gray-400 mb-2">
-            Tent ID: <span className="text-white">{tentId}</span>
-          </p>
-          <p className="text-sm text-gray-400 mb-2">
-            Host:{" "}
-            <span className="text-white">
-              {tentData.host_wallet || "Unknown"}
-            </span>
-          </p>
-          <p className="text-sm text-gray-400 mb-2">
-            Guest:{" "}
-            <span className="text-white">
-              {tentData.guest_wallet || address || "Not connected"}
-            </span>
+            Wallet: <span className="text-white">{address || "Not connected"}</span>
           </p>
           <p className="text-sm text-gray-400 mb-4">
-            Status:{" "}
-            <span className="text-white capitalize">
-              {tentData.status || "unknown"}
+            Verified:{" "}
+            <span className={verified ? "text-green-400" : "text-yellow-400"}>
+              {verified ? "Yes" : "No"}
             </span>
           </p>
 
-          {tentData.status !== "complete" && (
+          {!verified && (
+            <button
+              onClick={handleVerify}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg mb-3 w-full"
+            >
+              🖋️ Sign & Verify Tent
+            </button>
+          )}
+
+          {verified && (
             <button
               onClick={handleComplete}
-              className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition"
+              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg w-full"
             >
               ✅ Complete Trade
             </button>
@@ -146,20 +170,12 @@ export default function LiveTent() {
       )}
 
       {!address && (
-        <div className="mt-8 flex gap-4">
-          <button
-            onClick={connectKasware}
-            className="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg text-white"
-          >
-            Connect Kasware
-          </button>
-          <button
-            onClick={connectMetamask}
-            className="bg-yellow-500 hover:bg-yellow-600 px-4 py-2 rounded-lg text-white"
-          >
-            Connect MetaMask
-          </button>
-        </div>
+        <button
+          onClick={connectKasware}
+          className="mt-8 bg-[#00FFA3]/20 text-[#00FFA3] border border-[#00E8C8]/30 rounded-full px-4 py-1 hover:bg-[#00E8C8]/30 transition"
+        >
+          Connect Kasware / KDX
+        </button>
       )}
     </div>
   );

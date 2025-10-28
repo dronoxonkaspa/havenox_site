@@ -1,60 +1,62 @@
-import { useEffect, useState } from "react";
-import { supabase } from "../lib/supabaseClient";
+import { useCallback, useEffect, useState } from "react";
 import { useWallet } from "../context/WalletContext";
+import { getEscrows, signEscrow } from "../lib/apiClient";
 
 export default function ActiveEscrows({ wallet }) {
-  const { address } = useWallet();
+  const { address, provider } = useWallet();
   const [sessions, setSessions] = useState([]);
   const [msg, setMsg] = useState("");
 
-  // Load both buyer and seller sessions + subscribe to realtime changes
-  useEffect(() => {
+  // 🔁 Load all escrows for the given wallet
+  const loadEscrows = useCallback(async () => {
     if (!wallet) return;
-    loadEscrows();
-
-    const channel = supabase
-      .channel("realtime:escrow_sessions")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "escrow_sessions" },
-        () => loadEscrows()
-      )
-      .subscribe();
-
-    return () => supabase.removeChannel(channel);
+    try {
+      const data = await getEscrows(wallet);
+      const entries = Array.isArray(data?.escrows) ? data.escrows : [];
+      setSessions(entries);
+    } catch (err) {
+      console.error("Failed to load escrows:", err);
+      setMsg("⚠️ Unable to load escrow sessions.");
+    }
   }, [wallet]);
 
-  // Fetch all escrows where user is buyer or seller
-  async function loadEscrows() {
-    const { data, error } = await supabase
-      .from("escrow_sessions")
-      .select("*")
-      .or(`seller.eq.${wallet},buyer.eq.${wallet}`)
-      .order("created_at", { ascending: false });
+  // Auto-refresh every 15 seconds
+  useEffect(() => {
+    if (!wallet) {
+      setSessions([]);
+      return;
+    }
+    loadEscrows();
+    const interval = setInterval(loadEscrows, 15000);
+    return () => clearInterval(interval);
+  }, [wallet, loadEscrows]);
 
-    if (error) console.error(error);
-    else setSessions(data || []);
-  }
-
-  // Request signature + update Supabase
+  // 🔏 Confirm and sign escrow
   async function confirmEscrow(id, role) {
     try {
       setMsg("Requesting signature...");
       const message = `Confirm Escrow ${id} as ${role}`;
-      const signature = await window.ethereum.request({
-        method: "personal_sign",
-        params: [message, address],
-      });
+      let signature = "";
 
-      const updateField =
-        role === "seller" ? { seller_signature: signature } : { buyer_signature: signature };
+      if (provider === "MetaMask / EVM" && window.ethereum?.request) {
+        signature = await window.ethereum.request({
+          method: "personal_sign",
+          params: [message, address],
+        });
+      } else {
+        const kas = window.kasware || window.kdx || window.kaspium;
+        if (!kas || (!kas.signMessage && !kas.requestSignature)) {
+          throw new Error("Kaspa-compatible wallet not detected.");
+        }
+        if (typeof kas.signMessage === "function") {
+          signature = await kas.signMessage(message);
+        } else {
+          const resp = await kas.requestSignature({ message });
+          signature = resp?.signature || resp;
+        }
+      }
 
-      const { error } = await supabase
-        .from("escrow_sessions")
-        .update(updateField)
-        .eq("id", id);
-
-      if (error) throw error;
+      await signEscrow(id, { role, signature, signer: address });
       setMsg(`✅ ${role} signature added.`);
       await loadEscrows();
     } catch (err) {
@@ -80,64 +82,38 @@ export default function ActiveEscrows({ wallet }) {
             </p>
 
             <p className="text-sm text-gray-400 mb-1">
-              Seller: {s.seller.slice(0, 6)}…{s.seller.slice(-4)}
+              Seller: <span className="text-gray-300">{s.seller}</span>
             </p>
             <p className="text-sm text-gray-400 mb-1">
-              Buyer: {s.buyer.slice(0, 6)}…{s.buyer.slice(-4)}
+              Buyer: <span className="text-gray-300">{s.buyer}</span>
             </p>
-            <p className="text-sm text-gray-400 mb-1">
-              Price: {s.price} KAS • {s.network}
-            </p>
-
-            <p
-              className={`text-xs mb-3 ${
-                s.status === "complete"
-                  ? "text-[#00FFA3]"
-                  : s.status === "pending"
-                  ? "text-yellow-400"
-                  : "text-red-500"
-              }`}
-            >
-              Status: {s.status}
+            <p className="text-sm text-gray-400 mb-2">
+              Price: <span className="text-[#00FFA3]">{s.price} KAS</span>
             </p>
 
-            {/* Show required signature buttons */}
-            {s.status === "pending" && (
-              <>
-                {!s.seller_signature && s.seller === wallet && (
-                  <button
-                    onClick={() => confirmEscrow(s.id, "seller")}
-                    className="btn-neon w-full py-2 font-semibold mb-2"
-                  >
-                    Sign as Seller
-                  </button>
-                )}
-                {!s.buyer_signature && s.buyer === wallet && (
-                  <button
-                    onClick={() => confirmEscrow(s.id, "buyer")}
-                    className="btn-neon w-full py-2 font-semibold"
-                  >
-                    Sign as Buyer
-                  </button>
-                )}
-              </>
-            )}
-
-            {/* Display signatures */}
-            <div className="mt-2 text-xs text-gray-500">
-              Seller Sig:{" "}
-              {s.seller_signature ? (
-                <span className="text-[#00FFA3]">✓</span>
-              ) : (
-                "—"
+            <div className="flex gap-3 mt-2">
+              {!s.seller_signature && s.seller?.toLowerCase() === wallet?.toLowerCase() && (
+                <button
+                  onClick={() => confirmEscrow(s.id, "seller")}
+                  className="bg-[#00E8C8]/20 border border-[#00E8C8]/40 px-3 py-1 rounded hover:bg-[#00E8C8]/30"
+                >
+                  Sign as Seller
+                </button>
               )}
-              &nbsp;| Buyer Sig:{" "}
-              {s.buyer_signature ? (
-                <span className="text-[#00FFA3]">✓</span>
-              ) : (
-                "—"
+
+              {!s.buyer_signature && s.buyer?.toLowerCase() === wallet?.toLowerCase() && (
+                <button
+                  onClick={() => confirmEscrow(s.id, "buyer")}
+                  className="bg-[#00FFA3]/20 border border-[#00FFA3]/40 px-3 py-1 rounded hover:bg-[#00FFA3]/30"
+                >
+                  Sign as Buyer
+                </button>
               )}
             </div>
+
+            {s.status === "complete" && (
+              <p className="text-[#00FFA3] mt-2">✅ Escrow Complete</p>
+            )}
           </div>
         ))}
       </div>

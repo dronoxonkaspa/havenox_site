@@ -1,7 +1,7 @@
 // src/pages/Mint.jsx
 import { useState } from "react";
 import { useWallet } from "../context/WalletContext";
-import { supabase } from "../lib/supabaseClient";
+import { mintNft } from "../lib/apiClient";
 
 export default function Mint() {
   const { address } = useWallet();
@@ -22,32 +22,37 @@ export default function Mint() {
       if (!address) throw new Error("Connect your wallet first.");
       setMsg("Preparing mint…");
 
-      const { data, error } = await supabase
-        .from("mints")
-        .insert([
-          {
-            name: form.name,
-            description: form.description,
-            image_url: form.image_url,
-            creator: address,
-            royalty_percent: parseFloat(form.royalty_percent) || 0,
-          },
-        ])
-        .select()
-        .single();
-      if (error) throw error;
-
       const kas = window.kasware || window.kdx || window.kaspium;
       if (!kas) throw new Error("Kasware/KDX wallet not found.");
-      const message = `Mint NFT "${form.name}" record ID: ${data.id}`;
-      const signature = await kas.signMessage(message);
 
-      await supabase
-        .from("mints")
-        .update({ signature })
-        .eq("id", data.id);
+      const metadata = {
+        name: form.name,
+        description: form.description,
+        image: form.image_url,
+        royalty_percent: parseFloat(form.royalty_percent) || 0,
+      };
 
-      setMsg("✅ Mint recorded! Check your wallet for confirmation.");
+      const message = `HavenOx Mint | ${metadata.name} | ${address} | ${Date.now()}`;
+      let signature = "";
+
+      if (typeof kas.signMessage === "function") {
+        signature = await kas.signMessage(message);
+      } else if (typeof kas.requestSignature === "function") {
+        const response = await kas.requestSignature({ message });
+        signature = response?.signature || response;
+      } else {
+        throw new Error("Kasware wallet does not support message signing.");
+      }
+
+      const result = await mintNft({
+        address,
+        metadata,
+        message,
+        signature,
+      });
+
+      const mintId = result?.mint?.id || "pending";
+      setMsg(`✅ Mint recorded! Mint ID: ${mintId}`);
     } catch (err) {
       console.error(err);
       setMsg("⚠️ " + err.message);
@@ -65,6 +70,7 @@ export default function Mint() {
           <input
             name="name"
             onChange={handleChange}
+            value={form.name}
             className="w-full bg-black/40 border border-[#00E8C8]/30 rounded px-3 py-2 mt-1"
             placeholder="NFT name"
           />
@@ -75,8 +81,9 @@ export default function Mint() {
           <textarea
             name="description"
             onChange={handleChange}
+            value={form.description}
             className="w-full bg-black/40 border border-[#00E8C8]/30 rounded px-3 py-2 mt-1"
-            placeholder="Describe your NFT"
+            placeholder="Short description"
           />
         </label>
 
@@ -85,28 +92,29 @@ export default function Mint() {
           <input
             name="image_url"
             onChange={handleChange}
+            value={form.image_url}
             className="w-full bg-black/40 border border-[#00E8C8]/30 rounded px-3 py-2 mt-1"
-            placeholder="https://example.com/nft-image.png"
+            placeholder="https://example.com/image.png"
           />
         </label>
 
-        <label className="block mb-6 text-sm text-gray-400">
-          Royalty (%)
+        <label className="block mb-3 text-sm text-gray-400">
+          Royalty Percent
           <input
             name="royalty_percent"
             type="number"
-            step="0.1"
             onChange={handleChange}
+            value={form.royalty_percent}
             className="w-full bg-black/40 border border-[#00E8C8]/30 rounded px-3 py-2 mt-1"
-            placeholder="0 - 10"
+            placeholder="0"
           />
         </label>
 
         <button
           onClick={handleMint}
-          className="btn-neon w-full py-2 font-semibold"
+          className="btn-primary w-full mt-4"
         >
-          Mint
+          Mint NFT
         </button>
       </div>
     </div>

@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useWallet } from "../context/WalletContext";
 import { useListings } from "../context/ListingsContext";
-import { supabase } from "../lib/supabaseClient";
+import { getTradeHistory } from "../lib/apiClient";
 import ActiveEscrows from "../components/ActiveEscrows";
 import { CSVLink } from "react-csv";
 
@@ -14,13 +14,12 @@ export default function Profile() {
   const [msg, setMsg] = useState("");
   const [debugInfo, setDebugInfo] = useState("");
 
-  // ---- Load personal listings + trade history ----
+  // 🧩 Filter user’s listings
   useEffect(() => {
     if (address && listings.length > 0) {
+      const walletLower = address.toLowerCase();
       const mine = listings.filter(
-        (l) =>
-          l.signature &&
-          l.signature.toLowerCase().includes(address.slice(2, 8).toLowerCase())
+        (l) => (l.seller || "").toLowerCase() === walletLower
       );
       setMyListings(mine);
     } else {
@@ -28,40 +27,28 @@ export default function Profile() {
     }
   }, [address, listings]);
 
-  useEffect(() => {
-    loadTradeHistory();
-  }, [address]);
-
-  async function loadTradeHistory() {
+  // 📜 Load trade history
+  const loadTradeHistory = useCallback(async () => {
     try {
       setMsg("");
       setDebugInfo("Loading trades…");
 
-      // 1) Fetch ALL rows from trade_history
-      //    (if RLS blocks select, rows will be empty)
-      const { data, error } = await supabase
-        .from("trade_history")
-        .select("*")
-        .order("timestamp", { ascending: false });
-
-      if (error) {
-        console.error("Supabase trade_history error:", error);
-        setMsg("⚠️ Cannot read trade history (RLS/policy or schema issue).");
+      if (!address) {
         setTrades([]);
-        setDebugInfo(`Error from Supabase: ${error.message}`);
+        setDebugInfo("No wallet connected.");
         return;
       }
 
-      // 2) Client-side case-insensitive, trimmed match
-      const wallet = (address || "").trim().toLowerCase();
-      const allRows = Array.isArray(data) ? data : [];
+      const response = await getTradeHistory(address);
+      const allRows = Array.isArray(response?.trades) ? response.trades : [];
+      const wallet = address.trim().toLowerCase();
       const mine = allRows.filter(
         (r) => (r.wallet || "").trim().toLowerCase() === wallet
       );
 
       setTrades(mine);
       setDebugInfo(
-        `Fetched ${allRows.length} rows; matched ${mine.length} for ${address || "no address"}`
+        `Fetched ${allRows.length} trades; matched ${mine.length} for ${address}`
       );
     } catch (err) {
       console.error(err);
@@ -69,7 +56,11 @@ export default function Profile() {
       setTrades([]);
       setDebugInfo(`Caught exception: ${err.message}`);
     }
-  }
+  }, [address]);
+
+  useEffect(() => {
+    loadTradeHistory();
+  }, [loadTradeHistory]);
 
   if (loading)
     return <div className="pt-32 text-center text-gray-400">Loading...</div>;
@@ -78,11 +69,11 @@ export default function Profile() {
     <div className="min-h-screen pt-24 px-6 text-center">
       <h2 className="text-3xl font-bold mb-8 neon-text">My Profile</h2>
 
-      {/* ---- Small debug line to help validate data flow ---- */}
+      {/* 🧠 Debug info + messages */}
       <p className="text-xs text-gray-500 mb-4">{debugInfo}</p>
       {msg && <p className="text-[#00FFA3] mb-6">{msg}</p>}
 
-      {/* ---- Wallet Identity Card ---- */}
+      {/* 🪪 Wallet Info */}
       <div className="glow-box w-full max-w-2xl mx-auto p-6 mb-10 text-left rounded-xl">
         {address ? (
           <>
@@ -94,95 +85,99 @@ export default function Profile() {
               Verified Listings: {myListings.length}
             </p>
             <p className="text-sm text-gray-400 mb-1">
-              Networks Used:{" "}
-              {[...new Set(myListings.map((m) => m.network))].join(", ") || "—"}
-            </p>
-            <p className="text-sm text-gray-400">
-              Last Active: {new Date().toLocaleString()}
+              Networks Used: Kaspa / EVM
             </p>
           </>
         ) : (
-          <p className="text-gray-400">Connect your wallet to view details.</p>
+          <p className="text-gray-400">Connect your wallet to view profile.</p>
         )}
       </div>
 
-      {/* ---- My Listings ---- */}
-      <div className="glow-box p-6 text-left mb-10">
-        <h3 className="text-2xl font-semibold text-[#00FFA3] mb-6">
-          My Active Listings
+      {/* 🖼️ My Listings */}
+      <div className="max-w-5xl mx-auto mb-12">
+        <h3 className="text-2xl font-semibold mb-4 text-[#00E8C8]">
+          My Listings
         </h3>
-        {myListings.length === 0 ? (
-          <p className="text-gray-400">No active listings found.</p>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
+        {myListings.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {myListings.map((item) => (
               <div
                 key={item.id}
-                className="bg-black/40 border border-[#00E8C8]/40 rounded-lg p-4"
+                className="border border-[#00E8C8]/30 rounded-xl p-4 bg-black/30"
               >
                 <img
                   src={item.image_url}
                   alt={item.name}
-                  className="rounded-md mb-3 w-full h-48 object-cover"
+                  className="w-full h-48 object-cover rounded mb-3"
                 />
-                <h4 className="text-[#00FFA3] font-semibold mb-1">
+                <h4 className="text-lg font-bold text-[#00FFA3] mb-1">
                   {item.name}
                 </h4>
-                <p className="text-gray-400 text-sm mb-2">
-                  {item.price} KAS • {item.network}
+                <p className="text-gray-400 text-sm mb-1">
+                  {item.type || "NFT"}
+                </p>
+                <p className="text-gray-300 mb-2">
+                  {item.price} KAS — {item.status}
                 </p>
               </div>
             ))}
           </div>
+        ) : (
+          <p className="text-gray-400">No listings found.</p>
         )}
       </div>
 
-      {/* ---- Trade History ---- */}
-      <div className="glow-box p-6 text-left mb-10">
-        <h3 className="text-2xl font-semibold text-[#00FFA3] mb-6">
+      {/* 💹 Trade History */}
+      <div className="max-w-4xl mx-auto mb-12">
+        <h3 className="text-2xl font-semibold mb-4 text-[#00E8C8]">
           Trade History
         </h3>
-        {trades.length === 0 ? (
-          <p className="text-gray-400">No completed trades yet.</p>
-        ) : (
+        {trades.length > 0 ? (
           <>
-            <div className="flex flex-col gap-3">
-              {trades.map((t) => (
-                <div
-                  key={t.id}
-                  className="nft-card p-3 border border-[#00E8C8]/30 rounded"
-                >
-                  <p className="text-gray-300 text-sm">
-                    <span className="text-[#00E8C8]">{t.action}</span> —{" "}
-                    {t.nft_name} for {t.price} KAS on {t.network}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {t.timestamp
-                      ? new Date(t.timestamp).toLocaleString()
-                      : "—"}
-                  </p>
-                </div>
-              ))}
-            </div>
-
-            {/* ---- CSV Export Button ---- */}
-            <div className="mt-6 text-center">
-              <CSVLink
-                data={trades}
-                filename="HavenOx_trade_history.csv"
-                className="btn-neon px-6 py-2 rounded-full font-semibold"
-              >
-                Download Trade History CSV
-              </CSVLink>
-            </div>
+            <CSVLink
+              data={trades}
+              filename="trade_history.csv"
+              className="mb-4 inline-block bg-[#00E8C8]/20 border border-[#00E8C8]/40 px-4 py-2 rounded hover:bg-[#00E8C8]/30 text-sm"
+            >
+              Download CSV
+            </CSVLink>
+            <table className="w-full text-left border-collapse border border-[#00E8C8]/30">
+              <thead>
+                <tr className="text-[#00E8C8] border-b border-[#00E8C8]/30">
+                  <th className="p-2">NFT</th>
+                  <th className="p-2">Action</th>
+                  <th className="p-2">Price</th>
+                  <th className="p-2">Network</th>
+                  <th className="p-2">Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {trades.map((t) => (
+                  <tr
+                    key={t.id}
+                    className="text-gray-300 border-b border-[#00E8C8]/10"
+                  >
+                    <td className="p-2">{t.nft_name || "-"}</td>
+                    <td className="p-2">{t.action || "-"}</td>
+                    <td className="p-2">{t.price || 0} KAS</td>
+                    <td className="p-2">{t.network}</td>
+                    <td className="p-2">
+                      {new Date(t.timestamp).toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </>
+        ) : (
+          <p className="text-gray-400">No trade history found.</p>
         )}
       </div>
 
-      {/* ---- Active Escrow Sessions ---- */}
-      <div className="glow-box p-6 text-left mb-10">
-        <h3 className="text-2xl font-semibold text-[#00FFA3] mb-6">
-          Active Escrow Sessions
+      {/* 🤝 Active Escrows */}
+      <div className="max-w-4xl mx-auto">
+        <h3 className="text-2xl font-semibold mb-4 text-[#00E8C8]">
+          Active Escrows
         </h3>
         <ActiveEscrows wallet={address} />
       </div>

@@ -1,5 +1,6 @@
 // src/context/WalletContext.jsx
 import { createContext, useContext, useState } from "react";
+import { verifySession } from "../lib/apiClient";
 
 const WalletContext = createContext();
 
@@ -35,17 +36,13 @@ function getMetaMaskProvider() {
   if (typeof window === "undefined") return undefined;
   const { ethereum } = window;
   if (!ethereum) return undefined;
-
   if (ethereum.providers?.length) {
-    const metaMask = ethereum.providers.find((provider) => provider.isMetaMask);
+    const metaMask = ethereum.providers.find((p) => p.isMetaMask);
     if (metaMask) return metaMask;
   }
-
   return ethereum.isMetaMask ? ethereum : undefined;
 }
 
-const API_BASE =
-  import.meta.env.VITE_API_BASE || "https://drono-guard-bot.onrender.com";
 const TREASURY_ADDRESS =
   import.meta.env.VITE_TREASURY_ADDRESS ||
   "kaspa:qpz39pyz2ra8g0jtq7f0x9nrdzrllsenx282k5dqv8kgdmw7hsm9zcguzxr5y";
@@ -56,34 +53,28 @@ export function WalletProvider({ children }) {
   const [provider, setProvider] = useState("");
   const [token, setToken] = useState(() => getStoredToken());
 
+  // 🖋️ Handles signing messages across providers
   async function signMessage(walletType, msg, walletAddress = "") {
     try {
       if (walletType === "Kasware / KDX") {
         const kas = getKaswareProvider();
         if (!kas) throw new Error("Kasware wallet not detected.");
-        const signature = await kas.signMessage(msg);
-        console.log("✅ Kasware signature:", signature);
-        return signature;
+        return await kas.signMessage(msg);
       } else {
         const eth = getMetaMaskProvider();
         if (!eth || !eth.request)
           throw new Error("MetaMask not detected. Please enable it.");
-
         try {
-          const signature = await eth.request({
+          return await eth.request({
             method: "personal_sign",
             params: [msg, walletAddress || address],
           });
-          console.log("✅ MetaMask signature:", signature);
-          return signature;
         } catch (err) {
           console.warn("⚠️ Retrying MetaMask sign (reversed params)", err);
-          const signature = await eth.request({
+          return await eth.request({
             method: "personal_sign",
             params: [walletAddress || address, msg],
           });
-          console.log("✅ MetaMask signature (reversed):", signature);
-          return signature;
         }
       }
     } catch (err) {
@@ -92,21 +83,14 @@ export function WalletProvider({ children }) {
     }
   }
 
+  // 🪪 Secure login and token storage
   async function secureLogin(walletType, currentAddress) {
     try {
       const message = `Sign this message to verify ownership of ${currentAddress} on HavenOx. Nonce:${Date.now()}`;
       const signature = await signMessage(walletType, message, currentAddress);
-
       const payload = { address: currentAddress, signature, message };
-      console.log("📤 Sending verification payload:", payload);
 
-      const res = await fetch(`${API_BASE}/verify`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await res.json();
+      const data = await verifySession(payload);
       console.log("📥 Backend response:", data);
 
       if (data.status === "verified" || data.status === "ok") {
@@ -123,43 +107,35 @@ export function WalletProvider({ children }) {
     }
   }
 
+  // Kasware connection
   async function connectKasware() {
     try {
       const kas = getKaswareProvider();
       if (!kas) throw new Error("Kasware wallet not found.");
       const accounts = await kas.requestAccounts();
       if (!accounts?.length) throw new Error("No Kasware accounts detected.");
-
       const currentAddress = accounts[0];
       setAddress(currentAddress);
       setProvider("Kasware / KDX");
-
-      await new Promise((resolve) => setTimeout(resolve, 100));
       await secureLogin("Kasware / KDX", currentAddress);
     } catch (err) {
-      console.error("Kasware connection error:", err);
-      alert("Kasware connection failed: " + err.message);
+      alert("⚠️ " + err.message);
     }
   }
 
-  async function connectMetamask() {
+  // MetaMask connection
+  async function connectMetaMask() {
     try {
       const eth = getMetaMaskProvider();
-      if (!eth || !eth.request)
-        throw new Error("MetaMask not detected. Please ensure it’s active.");
-
+      if (!eth) throw new Error("MetaMask not found.");
       const accounts = await eth.request({ method: "eth_requestAccounts" });
-      if (!accounts?.length) throw new Error("No MetaMask accounts found.");
-
+      if (!accounts?.length) throw new Error("No MetaMask accounts detected.");
       const currentAddress = accounts[0];
       setAddress(currentAddress);
       setProvider("MetaMask / EVM");
-
-      await new Promise((resolve) => setTimeout(resolve, 100));
       await secureLogin("MetaMask / EVM", currentAddress);
     } catch (err) {
-      console.error("MetaMask connection error:", err);
-      alert("MetaMask connection failed: " + err.message);
+      alert("⚠️ " + err.message);
     }
   }
 
@@ -176,11 +152,11 @@ export function WalletProvider({ children }) {
         address,
         provider,
         token,
+        TREASURY_ADDRESS,
+        FEE_RATE,
         connectKasware,
-        connectMetamask,
+        connectMetaMask,
         disconnectWallet,
-        treasury: TREASURY_ADDRESS,
-        feeRate: FEE_RATE,
       }}
     >
       {children}
