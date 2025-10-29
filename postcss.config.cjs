@@ -1,6 +1,6 @@
 ﻿/**
- * Minimal PostCSS config in CJS to avoid JSON/BOM parsing issues.
- * Tries to load tailwindcss/autoprefixer if present; otherwise no-ops.
+ * Minimal PostCSS config in CommonJS format (no JSON parsing issues)
+ * Loads tailwindcss and autoprefixer if they’re installed.
  */
 module.exports = {
   plugins: [
