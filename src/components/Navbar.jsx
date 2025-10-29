@@ -1,15 +1,18 @@
-// Navbar.jsx — HavenOx NFT Trading Tent (Kasware only)
+// src/components/Navbar.jsx — HavenOx NFT Trading Tent Navigation
 import { Link } from "react-router-dom";
 import { useWallet } from "../context/WalletContext";
 
 export default function Navbar() {
-  const { address, connectKasware, disconnectWallet } = useWallet();
+  const { address, provider, connectWallet, disconnectWallet } = useWallet();
 
   return (
     <nav className="flex justify-between items-center px-6 py-3 bg-[#00040A] text-white shadow-lg border-b border-[#00E8C8]/10">
       {/* ---- Left Navigation ---- */}
       <div className="flex gap-6 items-center">
-        <Link to="/" className="font-bold text-[#00FFA3] text-lg hover:text-[#00E8C8]">
+        <Link
+          to="/"
+          className="font-bold text-[#00FFA3] text-lg hover:text-[#00E8C8]"
+        >
           HavenOx
         </Link>
         <Link
@@ -32,20 +35,25 @@ export default function Navbar() {
         </Link>
       </div>
 
-      {/* ---- Wallet Connect (Kasware only) ---- */}
+      {/* ---- Wallet Connect ---- */}
       <div className="flex items-center gap-3">
         {!address ? (
           <button
             type="button"
-            onClick={connectKasware}
+            onClick={() => connectWallet().catch(() => {})}
             className="wallet-button bg-[#00FFA3]/20 text-[#00FFA3] border border-[#00E8C8]/30 rounded-full px-4 py-1 hover:bg-[#00E8C8]/30 transition"
           >
-            Connect Kasware / KDX
+            Connect Wallet
           </button>
         ) : (
           <div className="flex items-center gap-2">
             <div className="text-sm bg-[#00E8C8]/10 border border-[#00E8C8]/30 px-3 py-1 rounded-full">
               {address.slice(0, 6)}…{address.slice(-4)}
+              {provider && (
+                <span className="ml-2 text-xs text-[#00FFA3]/80">
+                  {provider}
+                </span>
+              )}
             </div>
             <button
               type="button"

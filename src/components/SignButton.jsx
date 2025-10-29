@@ -1,34 +1,50 @@
+// src/components/SignButton.jsx — Unified Wallet Signature Verification
 import { useState } from "react";
+import { useWallet } from "../context/WalletContext";
+import { verifySignature } from "../lib/apiClient";
 
 export default function SignButton({ address }) {
   const [status, setStatus] = useState("idle");
+  const { connectWallet, signMessageWithWallet, provider } = useWallet();
 
   const handleSign = async () => {
-    if (!window.ethereum || !address)
-      return alert("Connect your wallet first.");
-
     try {
-      // 1️⃣  Build a unique escrow message
+      setStatus("idle");
+
+      let walletAddress = address;
+      let walletType = provider;
+
+      // 🧩 Connect wallet if not already
+      if (!walletAddress) {
+        const result = await connectWallet().catch(() => null);
+        walletAddress = result?.address || walletAddress;
+        walletType = result?.provider || walletType;
+      }
+      if (!walletAddress) {
+        alert("⚠️ Connect your wallet first.");
+        return;
+      }
+
+      // 1️⃣ Build a unique message to sign
       const message = `Confirm Escrow Session: ${crypto.randomUUID()}`;
 
-      // 2️⃣  Ask wallet to sign it
-      const signature = await window.ethereum.request({
-        method: "personal_sign",
-        params: [message, address],
+      // 2️⃣ Sign message using unified helper
+      const signature = await signMessageWithWallet(message, {
+        walletAddress,
+        walletType,
       });
 
       setStatus("verifying");
 
-      // 3️⃣  Send to Flask backend for verification
-      const res = await fetch("http://127.0.0.1:5000/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message, signature, address }),
+      // 3️⃣ Send to backend for verification
+      const data = await verifySignature({
+        message,
+        signature,
+        address: walletAddress,
       });
-      const data = await res.json();
 
-      // 4️⃣  Display result
-      if (data.valid) {
+      // 4️⃣ Show result
+      if (data.valid || data.status === "verified" || data.status === "ok") {
         setStatus("✅ Signature Verified");
         alert("✅ Trade signature verified!");
       } else {
@@ -37,7 +53,7 @@ export default function SignButton({ address }) {
       }
     } catch (err) {
       console.error(err);
-      alert("Signature process failed");
+      alert("⚠️ Signature process failed: " + err.message);
       setStatus("error");
     }
   };
