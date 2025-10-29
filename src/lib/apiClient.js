@@ -1,11 +1,12 @@
-// src/lib/apiClient.js
+// src/lib/apiClient.js — HavenOx API Client (Codex v1.2)
 export const API_BASE =
   import.meta.env.VITE_API_BASE || "https://havenox-backend.onrender.com";
 
 async function request(path, options = {}) {
-  const { method = "GET", headers = {}, body } = options;
+  const { method = "GET", headers = {}, body, signal } = options;
   const url = `${API_BASE}${path}`;
   const init = { method, headers: { ...headers } };
+  if (signal) init.signal = signal;
 
   if (body !== undefined && body !== null) {
     if (!init.headers["Content-Type"])
@@ -49,6 +50,10 @@ export const mintNft = (payload) =>
 // ---------- Tent / Live Trading ----------
 export const createTentSession = (payload) =>
   request("/tent/create", { method: "POST", body: payload });
+export const joinTentSession = (payload, { signal } = {}) =>
+  request("/tent/join", { method: "POST", body: payload, signal });
+export const completeTentSession = (payload) =>
+  request("/tent/complete", { method: "POST", body: payload });
 export const getTent = (id) => request(`/tent/${id}`);
 
 // ---------- Escrows ----------
@@ -70,6 +75,8 @@ export const recordTrade = (payload) =>
 // ---------- Wallet / Auth ----------
 export const verifySession = (payload) =>
   request("/verify", { method: "POST", body: payload });
+export const verifySignature = (payload) =>
+  request("/verify-signature", { method: "POST", body: payload });
 
 // ---------- Mints ----------
 export const getMints = (address) => {
