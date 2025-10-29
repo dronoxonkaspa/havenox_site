@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Minimal PostCSS config in CommonJS format (no JSON parsing issues)
  * Loads tailwindcss and autoprefixer if they’re installed.
  */
