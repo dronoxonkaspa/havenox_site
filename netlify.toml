@@ -1,18 +1,8 @@
-﻿# ============================
-# HavenOx Netlify Configuration
-# ============================
-
-[build]
+﻿[build]
   command = "npm run build"
   publish = "dist"
-  functions = "netlify/functions"
 
-[build.environment]
-  NODE_VERSION = "20"
-  NPM_FLAGS = "--include=optional"
-  VITE_API_BASE = "https://havenox-backend.onrender.com"
-  VITE_TREASURY_ADDRESS = "kaspa:qpz39pyz2ra8g0jtq7f0x9nrdzrllsenx282k5dqv8kgdmw7hsm9zcguzxr5y"
-  VITE_FEE_RATE = "0.02"
-
-[context.production.environment]
-  NODE_ENV = "production"
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
