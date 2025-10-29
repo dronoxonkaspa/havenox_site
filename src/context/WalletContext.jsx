@@ -8,8 +8,7 @@ function getStoredToken() {
   if (typeof window === "undefined") return "";
   try {
     return window.localStorage.getItem("havenox_token") || "";
-  } catch (err) {
-    console.warn("⚠️ Unable to read stored token:", err);
+  } catch {
     return "";
   }
 }
@@ -17,14 +16,9 @@ function getStoredToken() {
 function persistToken(value) {
   if (typeof window === "undefined") return;
   try {
-    if (value) {
-      window.localStorage.setItem("havenox_token", value);
-    } else {
-      window.localStorage.removeItem("havenox_token");
-    }
-  } catch (err) {
-    console.warn("⚠️ Unable to persist token:", err);
-  }
+    if (value) window.localStorage.setItem("havenox_token", value);
+    else window.localStorage.removeItem("havenox_token");
+  } catch {}
 }
 
 function getKaswareProvider() {
@@ -37,8 +31,8 @@ function getMetaMaskProvider() {
   const { ethereum } = window;
   if (!ethereum) return undefined;
   if (ethereum.providers?.length) {
-    const metaMask = ethereum.providers.find((p) => p.isMetaMask);
-    if (metaMask) return metaMask;
+    const mm = ethereum.providers.find((p) => p.isMetaMask);
+    if (mm) return mm;
   }
   return ethereum.isMetaMask ? ethereum : undefined;
 }
@@ -46,96 +40,86 @@ function getMetaMaskProvider() {
 const TREASURY_ADDRESS =
   import.meta.env.VITE_TREASURY_ADDRESS ||
   "kaspa:qpz39pyz2ra8g0jtq7f0x9nrdzrllsenx282k5dqv8kgdmw7hsm9zcguzxr5y";
-const FEE_RATE = 0.02; // 2%
+const FEE_RATE = Number(import.meta.env.VITE_FEE_RATE ?? 0.02);
 
 export function WalletProvider({ children }) {
   const [address, setAddress] = useState("");
   const [provider, setProvider] = useState("");
   const [token, setToken] = useState(() => getStoredToken());
 
-  // 🖋️ Handles signing messages across providers
+  // Universal message signer (Kasware/KDX/Kaspium or MetaMask)
   async function signMessage(walletType, msg, walletAddress = "") {
-    try {
-      if (walletType === "Kasware / KDX") {
-        const kas = getKaswareProvider();
-        if (!kas) throw new Error("Kasware wallet not detected.");
-        return await kas.signMessage(msg);
-      } else {
-        const eth = getMetaMaskProvider();
-        if (!eth || !eth.request)
-          throw new Error("MetaMask not detected. Please enable it.");
-        try {
-          return await eth.request({
-            method: "personal_sign",
-            params: [msg, walletAddress || address],
-          });
-        } catch (err) {
-          console.warn("⚠️ Retrying MetaMask sign (reversed params)", err);
-          return await eth.request({
-            method: "personal_sign",
-            params: [walletAddress || address, msg],
-          });
-        }
-      }
-    } catch (err) {
-      console.error("❌ signMessage error:", err);
-      throw err;
-    }
-  }
-
-  // 🪪 Secure login and token storage
-  async function secureLogin(walletType, currentAddress) {
-    try {
-      const message = `Sign this message to verify ownership of ${currentAddress} on HavenOx. Nonce:${Date.now()}`;
-      const signature = await signMessage(walletType, message, currentAddress);
-      const payload = { address: currentAddress, signature, message };
-
-      const data = await verifySession(payload);
-      console.log("📥 Backend response:", data);
-
-      if (data.status === "verified" || data.status === "ok") {
-        const newToken = data.session_token || "";
-        persistToken(newToken);
-        setToken(newToken);
-        alert("✅ Wallet verified and session created!");
-      } else {
-        alert("❌ Verification failed. Please try again.");
-      }
-    } catch (err) {
-      console.error("❌ secureLogin error:", err);
-      alert("⚠️ Login error: " + err.message);
-    }
-  }
-
-  // Kasware connection
-  async function connectKasware() {
-    try {
+    if (walletType === "Kasware / KDX") {
       const kas = getKaswareProvider();
-      if (!kas) throw new Error("Kasware wallet not found.");
-      const accounts = await kas.requestAccounts();
-      if (!accounts?.length) throw new Error("No Kasware accounts detected.");
-      const currentAddress = accounts[0];
-      setAddress(currentAddress);
-      setProvider("Kasware / KDX");
-      await secureLogin("Kasware / KDX", currentAddress);
-    } catch (err) {
-      alert("⚠️ " + err.message);
+      if (!kas) throw new Error("Kasware/KDX wallet not detected.");
+      if (typeof kas.signMessage === "function") return kas.signMessage(msg);
+      if (typeof kas.requestSignature === "function") {
+        const r = await kas.requestSignature({ message: msg });
+        return r?.signature || r;
+      }
+      throw new Error("Kasware wallet does not support message signing.");
+    } else {
+      const eth = getMetaMaskProvider();
+      if (!eth?.request) throw new Error("MetaMask not detected.");
+      try {
+        return await eth.request({
+          method: "personal_sign",
+          params: [msg, walletAddress || address],
+        });
+      } catch {
+        // Some MM versions require reversed params
+        return await eth.request({
+          method: "personal_sign",
+          params: [walletAddress || address, msg],
+        });
+      }
     }
   }
 
-  // MetaMask connection
-  async function connectMetaMask() {
+  // Verify session with backend and persist token
+  async function secureLogin(walletType, currentAddress) {
+    const message = `Sign this message to verify ownership of ${currentAddress} on HavenOx. Nonce:${Date.now()}`;
+    const signature = await signMessage(walletType, message, currentAddress);
+    const data = await verifySession({ address: currentAddress, signature, message });
+
+    if (data.status === "verified" || data.status === "ok") {
+      const newToken = data.session_token || "";
+      persistToken(newToken);
+      setToken(newToken);
+      alert("✅ Wallet verified and session created!");
+    } else {
+      throw new Error("Verification failed. Please try again.");
+    }
+  }
+
+  // Connectors
+  async function connectKasware() {
+    const kas = getKaswareProvider();
+    if (!kas) return alert("Kasware/KDX wallet not found.");
+    const accounts = await kas.requestAccounts();
+    if (!accounts?.length) return alert("No Kasware accounts detected.");
+    const currentAddress = accounts[0];
+    setAddress(currentAddress);
+    setProvider("Kasware / KDX");
     try {
-      const eth = getMetaMaskProvider();
-      if (!eth) throw new Error("MetaMask not found.");
-      const accounts = await eth.request({ method: "eth_requestAccounts" });
-      if (!accounts?.length) throw new Error("No MetaMask accounts detected.");
-      const currentAddress = accounts[0];
-      setAddress(currentAddress);
-      setProvider("MetaMask / EVM");
+      await secureLogin("Kasware / KDX", currentAddress);
+    } catch (e) {
+      alert("⚠️ " + e.message);
+    }
+  }
+
+  async function connectMetaMask() {
+    const eth = getMetaMaskProvider();
+    if (!eth) return alert("MetaMask not found.");
+    const accounts = await eth.request({ method: "eth_requestAccounts" });
+    if (!accounts?.length) return alert("No MetaMask accounts detected.");
+    const currentAddress = accounts[0];
+    setAddress(currentAddress);
+    setProvider("MetaMask / EVM");
+    try {
       await secureLogin("MetaMask / EVM", currentAddress);
-    } catch (err) {
-      alert("⚠️ " + err.message);
+    } catch (e) {
+      alert("⚠️ " + e.message);
     }
   }
 
@@ -157,6 +141,8 @@ export function WalletProvider({ children }) {
         connectKasware,
         connectMetaMask,
         disconnectWallet,
+        // exposing signer is handy for pages needing direct sign
+        signMessage,
       }}
     >
       {children}

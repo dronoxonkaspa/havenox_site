@@ -7,7 +7,7 @@ export default function ActiveEscrows({ wallet }) {
   const [sessions, setSessions] = useState([]);
   const [msg, setMsg] = useState("");
 
-  // 🔁 Load all escrows for the given wallet
+  // Load escrows from backend
   const loadEscrows = useCallback(async () => {
     if (!wallet) return;
     try {
@@ -20,18 +20,14 @@ export default function ActiveEscrows({ wallet }) {
     }
   }, [wallet]);
 
-  // Auto-refresh every 15 seconds
   useEffect(() => {
-    if (!wallet) {
-      setSessions([]);
-      return;
-    }
+    if (!wallet) return;
     loadEscrows();
     const interval = setInterval(loadEscrows, 15000);
     return () => clearInterval(interval);
   }, [wallet, loadEscrows]);
 
-  // 🔏 Confirm and sign escrow
+  // Sign escrow (buyer or seller)
   async function confirmEscrow(id, role) {
     try {
       setMsg("Requesting signature...");
@@ -45,15 +41,13 @@ export default function ActiveEscrows({ wallet }) {
         });
       } else {
         const kas = window.kasware || window.kdx || window.kaspium;
-        if (!kas || (!kas.signMessage && !kas.requestSignature)) {
-          throw new Error("Kaspa-compatible wallet not detected.");
-        }
-        if (typeof kas.signMessage === "function") {
+        if (!kas) throw new Error("Kaspa-compatible wallet not detected.");
+        if (typeof kas.signMessage === "function")
           signature = await kas.signMessage(message);
-        } else {
-          const resp = await kas.requestSignature({ message });
-          signature = resp?.signature || resp;
-        }
+        else if (typeof kas.requestSignature === "function") {
+          const res = await kas.requestSignature({ message });
+          signature = res?.signature || res;
+        } else throw new Error("Wallet cannot sign messages.");
       }
 
       await signEscrow(id, { role, signature, signer: address });
@@ -80,35 +74,31 @@ export default function ActiveEscrows({ wallet }) {
             <p className="text-gray-300 mb-2">
               Escrow ID: <span className="text-[#00E8C8]">{s.id}</span>
             </p>
-
-            <p className="text-sm text-gray-400 mb-1">
-              Seller: <span className="text-gray-300">{s.seller}</span>
-            </p>
-            <p className="text-sm text-gray-400 mb-1">
-              Buyer: <span className="text-gray-300">{s.buyer}</span>
-            </p>
+            <p className="text-sm text-gray-400 mb-1">Seller: {s.seller}</p>
+            <p className="text-sm text-gray-400 mb-1">Buyer: {s.buyer}</p>
             <p className="text-sm text-gray-400 mb-2">
               Price: <span className="text-[#00FFA3]">{s.price} KAS</span>
             </p>
 
             <div className="flex gap-3 mt-2">
-              {!s.seller_signature && s.seller?.toLowerCase() === wallet?.toLowerCase() && (
-                <button
-                  onClick={() => confirmEscrow(s.id, "seller")}
-                  className="bg-[#00E8C8]/20 border border-[#00E8C8]/40 px-3 py-1 rounded hover:bg-[#00E8C8]/30"
-                >
-                  Sign as Seller
-                </button>
-              )}
-
-              {!s.buyer_signature && s.buyer?.toLowerCase() === wallet?.toLowerCase() && (
-                <button
-                  onClick={() => confirmEscrow(s.id, "buyer")}
-                  className="bg-[#00FFA3]/20 border border-[#00FFA3]/40 px-3 py-1 rounded hover:bg-[#00FFA3]/30"
-                >
-                  Sign as Buyer
-                </button>
-              )}
+              {!s.seller_signature &&
+                s.seller?.toLowerCase() === wallet?.toLowerCase() && (
+                  <button
+                    onClick={() => confirmEscrow(s.id, "seller")}
+                    className="bg-[#00E8C8]/20 border border-[#00E8C8]/40 px-3 py-1 rounded hover:bg-[#00E8C8]/30"
+                  >
+                    Sign as Seller
+                  </button>
+                )}
+              {!s.buyer_signature &&
+                s.buyer?.toLowerCase() === wallet?.toLowerCase() && (
+                  <button
+                    onClick={() => confirmEscrow(s.id, "buyer")}
+                    className="bg-[#00FFA3]/20 border border-[#00FFA3]/40 px-3 py-1 rounded hover:bg-[#00FFA3]/30"
+                  >
+                    Sign as Buyer
+                  </button>
+                )}
             </div>
 
             {s.status === "complete" && (

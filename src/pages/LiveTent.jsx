@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { useWallet } from "../context/WalletContext";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000";
+const API_BASE = import.meta.env.VITE_API_BASE || "https://havenox-backend.onrender.com";
 
 export default function LiveTent() {
   const [searchParams] = useSearchParams();
@@ -16,9 +16,9 @@ export default function LiveTent() {
   const [verified, setVerified] = useState(false);
 
   const tentId = useMemo(() => params.id?.trim() ?? "", [params.id]);
-  const password = searchParams.get("pw");
+  const password = searchParams.get("pw") || searchParams.get("pass") || searchParams.get("pwrd");
 
-  // 🪶 Load Tent Session
+  // Join Tent session
   useEffect(() => {
     async function joinTent(signal) {
       if (!tentId) return;
@@ -31,66 +31,52 @@ export default function LiveTent() {
             tent_id: tentId,
             password,
             guest_wallet: address || "pending",
-            nft_guest: { name: "NFT placeholder" },
+            nft_guest: { name: "NFT placeholder" }
           }),
         });
-
         const data = await res.json();
-        if (data.status === "joined") {
-          setTentData(data);
+        if (res.ok && (data?.status === "joined")) {
+          setTentData(data.tent || data);
           setMessage("✅ Joined NFT Tent");
         } else {
-          setError(data.message || "Failed to join tent.");
+          setError(data?.message || "Failed to join tent.");
         }
       } catch (err) {
         if (err.name !== "AbortError") setError("Error joining tent.");
       }
     }
-
     const controller = new AbortController();
     joinTent(controller.signal);
     return () => controller.abort();
   }, [tentId, password, address]);
 
-  // 🖋️ Sign + Verify Tent Participation
+  // Cross-wallet signing helper (Kasware/KDX/Kaspium)
+  async function signWithKaspaWallet(msg) {
+    const kas = window.kasware || window.kdx || window.kaspium;
+    if (!kas) throw new Error("Kasware/KDX wallet not detected.");
+    if (typeof kas.signMessage === "function") return kas.signMessage(msg);
+    if (typeof kas.requestSignature === "function") {
+      const r = await kas.requestSignature({ message: msg });
+      return r?.signature || r;
+    }
+    throw new Error("Kaspa wallet does not support message signing.");
+  }
+
+  // Sign + verify tent participation
   async function handleVerify() {
     try {
-      if (!address) {
-        alert("⚠️ Connect Kasware or KDX first.");
-        return;
-      }
-
+      if (!address) return alert("Connect your Kasware/KDX wallet first.");
       const msg = `I, ${address}, confirm participation in Tent ${tentId} at ${new Date().toISOString()}`;
-      let sig = "";
-
-      const kas = window.kasware || window.kdx || window.kaspium;
-      if (!kas) throw new Error("Kasware-compatible wallet not detected.");
-
-      // Try signMessage first, fallback to requestSignature
-      if (typeof kas.signMessage === "function") {
-        sig = await kas.signMessage(msg);
-      } else if (typeof kas.requestSignature === "function") {
-        const response = await kas.requestSignature({ message: msg });
-        sig = response?.signature || response;
-      } else {
-        throw new Error("No valid signing method found in wallet.");
-      }
+      const signature = await signWithKaspaWallet(msg);
 
       const res = await fetch(`${API_BASE}/verify_signature`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          address,
-          message: msg,
-          signature: sig,
-          tent_id: tentId,
-        }),
+        body: JSON.stringify({ address, message: msg, signature, tent_id: tentId }),
       });
-
       const data = await res.json();
-      console.log("Verification result:", data);
 
-      if (data.verified || data.status === "verified") {
+      if (res.ok && (data?.verified || data?.status === "verified")) {
         setVerified(true);
         alert("✅ Signature verified and stored on backend.");
       } else {
@@ -102,7 +88,7 @@ export default function LiveTent() {
     }
   }
 
-  // ✅ Complete Trade
+  // Finalize trade
   async function handleComplete() {
     try {
       setMessage("⏳ Finalizing trade...");
@@ -112,25 +98,19 @@ export default function LiveTent() {
         body: JSON.stringify({ tent_id: tentId }),
       });
       const data = await res.json();
-      if (data.status === "complete") {
+      if (res.ok && data?.status === "complete") {
         setMessage("✅ NFT trade finalized!");
       } else {
-        setError("Trade could not complete.");
+        setError(data?.message || "Trade could not complete.");
       }
-    } catch (err) {
+    } catch {
       setError("Trade finalize error.");
     }
   }
 
-  // ❌ Error UI
   if (error)
-    return (
-      <div className="p-8 text-center text-red-500 font-semibold">
-        ❌ {error}
-      </div>
-    );
+    return <div className="p-8 text-center text-red-500 font-semibold">❌ {error}</div>;
 
-  // 🧠 Main UI
   return (
     <div className="p-8 flex flex-col items-center text-center">
       <h1 className="text-2xl font-bold mb-4 text-white">🎨 HavenOx NFT Tent</h1>

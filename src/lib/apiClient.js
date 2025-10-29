@@ -1,38 +1,35 @@
+// src/lib/apiClient.js
 export const API_BASE =
   import.meta.env.VITE_API_BASE || "https://havenox-backend.onrender.com";
 
-/**
- * Generic request wrapper
- */
 async function request(path, options = {}) {
   const { method = "GET", headers = {}, body } = options;
   const url = `${API_BASE}${path}`;
   const init = { method, headers: { ...headers } };
 
   if (body !== undefined && body !== null) {
-    if (!init.headers["Content-Type"]) {
+    if (!init.headers["Content-Type"])
       init.headers["Content-Type"] = "application/json";
-    }
     init.body = typeof body === "string" ? body : JSON.stringify(body);
   }
 
-  const response = await fetch(url, init);
-  const text = await response.text();
-
+  const res = await fetch(url, init);
+  const text = await res.text();
   let data = null;
+
   if (text) {
     try {
       data = JSON.parse(text);
     } catch (err) {
-      throw new Error(`Invalid JSON response from ${path}: ${err.message}`);
+      throw new Error(`Invalid JSON from ${path}: ${err.message}`);
     }
   }
 
-  if (!response.ok) {
+  if (!res.ok) {
     const message =
-      data?.message || data?.error || `Request failed with ${response.status}`;
+      data?.message || data?.error || `Request failed: ${res.status}`;
     const error = new Error(message);
-    error.status = response.status;
+    error.status = res.status;
     error.data = data;
     throw error;
   }
@@ -40,60 +37,43 @@ async function request(path, options = {}) {
   return data;
 }
 
-// 📦 Marketplace
-export function getListings() {
-  return request("/marketplace/listings");
-}
+// ---------- Marketplace ----------
+export const getListings = () => request("/marketplace/listings");
+export const createListing = (payload) =>
+  request("/marketplace/listings", { method: "POST", body: payload });
 
-export function createListing(payload) {
-  return request("/marketplace/listings", { method: "POST", body: payload });
-}
+// ---------- Mint ----------
+export const mintNft = (payload) =>
+  request("/mint-nft", { method: "POST", body: payload });
 
-// 🪙 NFT Mint
-export function mintNft(payload) {
-  return request("/mint-nft", { method: "POST", body: payload });
-}
+// ---------- Tent / Live Trading ----------
+export const createTentSession = (payload) =>
+  request("/tent/create", { method: "POST", body: payload });
+export const getTent = (id) => request(`/tent/${id}`);
 
-// 🎪 Tent / Live Trading
-export function createTentSession(payload) {
-  return request("/tent/create", { method: "POST", body: payload });
-}
+// ---------- Escrows ----------
+export const getEscrows = (wallet) => {
+  const q = wallet ? `?wallet=${encodeURIComponent(wallet)}` : "";
+  return request(`/escrows${q}`);
+};
+export const signEscrow = (id, payload) =>
+  request(`/escrows/${id}/sign`, { method: "POST", body: payload });
 
-export function getTent(id) {
-  return request(`/tent/${id}`);
-}
+// ---------- Trade History ----------
+export const getTradeHistory = (wallet) => {
+  const q = wallet ? `?wallet=${encodeURIComponent(wallet)}` : "";
+  return request(`/trade-history${q}`);
+};
+export const recordTrade = (payload) =>
+  request("/trade-history", { method: "POST", body: payload });
 
-// 💰 Escrows
-export function getEscrows(wallet) {
-  const query = wallet ? `?wallet=${encodeURIComponent(wallet)}` : "";
-  return request(`/escrows${query}`);
-}
+// ---------- Wallet / Auth ----------
+export const verifySession = (payload) =>
+  request("/verify", { method: "POST", body: payload });
 
-export function signEscrow(id, payload) {
-  return request(`/escrows/${id}/sign`, { method: "POST", body: payload });
-}
-
-// 📜 Trade History
-export function getTradeHistory(wallet) {
-  const query = wallet ? `?wallet=${encodeURIComponent(wallet)}` : "";
-  return request(`/trade-history${query}`);
-}
-
-export function recordTrade(payload) {
-  return request("/trade-history", { method: "POST", body: payload });
-}
-
-// 🔐 Wallet Verification
-export function verifySession(payload) {
-  return request("/verify", { method: "POST", body: payload });
-}
-
-// 🧬 Mint + Treasury Info
-export function getMints(address) {
-  const query = address ? `?address=${encodeURIComponent(address)}` : "";
-  return request(`/mints${query}`);
-}
-
-export function getTreasuryConfig() {
-  return request("/config/treasury");
-}
+// ---------- Mints ----------
+export const getMints = (address) => {
+  const q = address ? `?address=${encodeURIComponent(address)}` : "";
+  return request(`/mints${q}`);
+};
+export const getTreasuryConfig = () => request("/config/treasury");

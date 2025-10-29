@@ -26,26 +26,16 @@ export default function CreateListing() {
 
   function handleChange(e) {
     const { name, value, type, checked } = e.target;
-    setFormData({
-      ...formData,
-      [name]: type === "checkbox" ? checked : value,
-    });
+    setFormData({ ...formData, [name]: type === "checkbox" ? checked : value });
   }
 
-  // 🔍 Fetch NFT metadata from contract
   async function verifyNFT() {
     try {
       if (!window.ethereum) throw new Error("EVM wallet not detected.");
       const provider = new ethers.BrowserProvider(window.ethereum);
-      const contract = new ethers.Contract(
-        formData.contract,
-        ERC721_ABI,
-        provider
-      );
+      const contract = new ethers.Contract(formData.contract, ERC721_ABI, provider);
       const owner = await contract.ownerOf(formData.tokenId);
-      if (owner.toLowerCase() !== address.toLowerCase()) {
-        throw new Error("You do not own this token.");
-      }
+      if (owner.toLowerCase() !== address.toLowerCase()) throw new Error("You do not own this token.");
 
       const tokenURI = await contract.tokenURI(formData.tokenId);
       const metadata = await fetch(tokenURI).then((r) => r.json());
@@ -58,16 +48,15 @@ export default function CreateListing() {
     }
   }
 
-  // ✍️ Sign NFT Listing
   async function signListing() {
     try {
       const message = `List NFT ${formData.contract} #${formData.tokenId} for sale`;
       if (window.ethereum?.request) {
-        const signature = await window.ethereum.request({
+        const sig = await window.ethereum.request({
           method: "personal_sign",
           params: [message, address],
         });
-        setSignature(signature);
+        setSignature(sig);
         setMsg("✅ Signature verified");
       } else {
         const kas = window.kasware || window.kdx || window.kaspium;
@@ -82,7 +71,6 @@ export default function CreateListing() {
     }
   }
 
-  // 💾 Save listing
   async function handleSubmit(e) {
     e.preventDefault();
     if (!meta) return setMsg("⚠️ Verify NFT first.");
@@ -103,13 +91,7 @@ export default function CreateListing() {
       });
 
       setMsg("✅ Listing created & signed!");
-      setFormData({
-        network: "EVM",
-        contract: "",
-        tokenId: "",
-        price: "",
-        trade: false,
-      });
+      setFormData({ network: "EVM", contract: "", tokenId: "", price: "", trade: false });
       setMeta(null);
       setSignature("");
     } catch (err) {
@@ -122,9 +104,7 @@ export default function CreateListing() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center text-center px-6">
-      <h1 className="text-4xl font-bold mb-10 neon-text">
-        Create Verified & Signed Listing
-      </h1>
+      <h1 className="text-4xl font-bold mb-10 neon-text">Create Verified & Signed Listing</h1>
 
       <div className="glow-box w-full max-w-md p-8">
         <form onSubmit={handleSubmit}>
@@ -170,27 +150,15 @@ export default function CreateListing() {
           </label>
 
           <div className="flex flex-col gap-2 mb-4">
-            <button
-              type="button"
-              onClick={verifyNFT}
-              className="btn-secondary w-full"
-            >
+            <button type="button" onClick={verifyNFT} className="btn-secondary w-full">
               Verify NFT
             </button>
-            <button
-              type="button"
-              onClick={signListing}
-              className="btn-secondary w-full"
-            >
+            <button type="button" onClick={signListing} className="btn-secondary w-full">
               Sign Listing
             </button>
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="btn-primary w-full"
-          >
+          <button type="submit" disabled={loading} className="btn-primary w-full">
             {loading ? "Saving..." : "Create Listing"}
           </button>
         </form>
