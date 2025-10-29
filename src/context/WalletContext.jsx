@@ -127,7 +127,7 @@ export function WalletProvider({ children }) {
       throw new Error("No compatible wallet extension detected.");
     } catch (err) {
       const msg = err?.message || "Unable to connect wallet.";
-      if (typeof window.alert === "function") window.alert(⚠️ " + msg);
+      if (typeof window.alert === "function") window.alert("⚠️ " + msg);
       throw err;
     }
   }
