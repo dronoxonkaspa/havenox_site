@@ -1,98 +1,68 @@
-// src/pages/CreateTent.jsx
-import { useState } from "react";
-import { createTentSession } from "../lib/apiClient";
+﻿import { useState } from "react";
 
 export default function CreateTent() {
-  const [email, setEmail] = useState("");
-  const [price, setPrice] = useState("");
-  const [result, setResult] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [form, setForm] = useState({ name: "", nftId: "", partnerWallet: "" });
+  const [submitted, setSubmitted] = useState(false);
 
-  async function handleCreate() {
-    setLoading(true);
-    setError("");
-    try {
-      const data = await createTentSession({
-        host_wallet:
-          "kaspa:qpz39pyz2ra8g0jtq7f0x9nrdzrllsenx282k5dqv8kgdmw7hsm9zcguzxr5y",
-        price,
-        guest_email: email,
-      });
+  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
-      if (data.status === "created") {
-        setResult(data);
-      } else {
-        setError(data.message || "Error creating tent.");
-      }
-    } catch (err) {
-      console.error(err);
-      setError("Request failed: " + err.message);
-    } finally {
-      setLoading(false);
-    }
-  }
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    await fetch("https://havenox-backend.onrender.com/tent", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+    setSubmitted(true);
+  };
+
+  if (submitted)
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center text-center text-gray-100">
+        <h2 className="text-3xl text-cyan-400 font-bold mb-4">Tent Created!</h2>
+        <p className="text-gray-400">Share your tent link with your trading partner.</p>
+      </div>
+    );
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#00040A] text-[#C0C7C9] px-4 py-12">
-      <h1 className="text-3xl font-extrabold mb-8 text-[#00FFA3]">
-        🎪 Create P2P Tent
-      </h1>
+    <div className="min-h-screen flex items-center justify-center bg-gray-950 text-gray-100">
+      <form
+        onSubmit={handleSubmit}
+        className="bg-gray-900 p-8 rounded-2xl w-full max-w-md shadow-xl space-y-5"
+      >
+        <h2 className="text-2xl font-bold text-cyan-400 text-center">Create New Tent</h2>
 
-      <div className="border border-[#00E8C8]/40 rounded-2xl p-8 w-full max-w-md bg-black/30 shadow-lg">
-        <label className="block mb-3 text-left">
-          Guest Email:
-          <input
-            className="w-full mt-1 px-3 py-2 rounded-md bg-[#0a0a0a] border border-[#00E8C8]/40"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="guest@example.com"
-          />
-        </label>
+        <input
+          name="name"
+          placeholder="Tent name"
+          onChange={handleChange}
+          required
+          className="w-full px-4 py-3 rounded-lg bg-gray-800 border border-gray-700 focus:border-cyan-400 outline-none"
+        />
 
-        <label className="block mb-3 text-left">
-          Tent Price (KAS):
-          <input
-            type="number"
-            className="w-full mt-1 px-3 py-2 rounded-md bg-[#0a0a0a] border border-[#00E8C8]/40"
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-            placeholder="Enter price"
-          />
-        </label>
+        <input
+          name="nftId"
+          placeholder="NFT ID"
+          onChange={handleChange}
+          required
+          className="w-full px-4 py-3 rounded-lg bg-gray-800 border border-gray-700 focus:border-cyan-400 outline-none"
+        />
+
+        <input
+          name="partnerWallet"
+          placeholder="Partner Kaspa wallet address"
+          onChange={handleChange}
+          required
+          className="w-full px-4 py-3 rounded-lg bg-gray-800 border border-gray-700 focus:border-cyan-400 outline-none"
+        />
 
         <button
-          onClick={handleCreate}
-          disabled={loading}
-          className="w-full py-2 mt-4 bg-[#00E8C8]/20 border border-[#00E8C8]/40 rounded-lg hover:bg-[#00E8C8]/30"
+          type="submit"
+          className="w-full bg-cyan-500 hover:bg-cyan-600 text-black font-semibold py-3 rounded-lg transition"
         >
-          {loading ? "Creating..." : "Create Tent"}
+          Create Tent
         </button>
-
-        {error && <p className="mt-4 text-red-400">{error}</p>}
-
-        {result && (
-          <div className="mt-6 p-4 border border-[#00E8C8]/40 rounded-lg bg-black/40">
-            <p className="text-[#00FFA3] mb-2 font-semibold">
-              ✅ Tent Created Successfully!
-            </p>
-            <p className="text-sm text-gray-300">
-              Tent Link:{" "}
-              <a
-                href={result.link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[#00E8C8] underline break-all"
-              >
-                {result.link}
-              </a>
-            </p>
-            <p className="text-sm text-gray-400 mt-2">
-              Password: <span className="text-[#00FFA3]">{result.password}</span>
-            </p>
-          </div>
-        )}
-      </div>
+      </form>
     </div>
   );
 }

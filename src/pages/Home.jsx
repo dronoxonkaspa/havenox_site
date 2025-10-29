@@ -1,97 +1,27 @@
-// src/pages/Home.jsx
-import { useEffect } from "react";
-import { Link } from "react-router-dom";
+﻿import { Link } from "react-router-dom";
 
 export default function Home() {
-  useEffect(() => {
-    const glow = document.getElementById("parallaxGlow");
-    const move = (e) => {
-      const x = (e.clientX / window.innerWidth - 0.5) * 25;
-      const y = (e.clientY / window.innerHeight - 0.5) * 25;
-      if (glow) glow.style.transform = `translate(${x}px, ${y}px)`;
-    };
-    document.addEventListener("mousemove", move);
-    return () => document.removeEventListener("mousemove", move);
-  }, []);
-
-  const back = Array.from({ length: 40 });
-  const front = Array.from({ length: 60 });
-
   return (
-    <div className="relative min-h-screen flex flex-col items-center justify-center text-center overflow-hidden">
-      {/* Parallax Glow */}
-      <div
-        id="parallaxGlow"
-        className="absolute w-[800px] h-[800px] rounded-full blur-[180px] bg-gradient-radial from-[#00E8C8]/40 via-[#00FFA3]/20 to-transparent transition-transform duration-300 ease-out z-0"
-      />
-
-      {/* Particles */}
-      <div className="absolute inset-0 z-0">
-        {back.map((_, i) => (
-          <div
-            key={`b-${i}`}
-            className="absolute w-[2px] h-[2px] bg-[#00E8C8]/30 rounded-full animate-float"
-            style={{
-              top: `${Math.random() * 100}%`,
-              left: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 8}s`,
-              animationDuration: `${10 + Math.random() * 8}s`,
-            }}
-          />
-        ))}
-        {front.map((_, i) => (
-          <div
-            key={`f-${i}`}
-            className="absolute w-[3px] h-[3px] bg-[#00FFA3] rounded-full animate-float opacity-90"
-            style={{
-              top: `${Math.random() * 100}%`,
-              left: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 4}s`,
-              animationDuration: `${6 + Math.random() * 6}s`,
-            }}
-          />
-        ))}
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-gray-900 via-gray-950 to-black text-gray-100">
+      <h1 className="text-5xl font-bold mb-6 text-cyan-400">HavenOx NFT Tent</h1>
+      <p className="max-w-xl text-center mb-8 text-gray-400">
+        Securely trade and verify Kaspa NFTs in real-time.  
+        No intermediaries, no risks — peer-to-peer trust powered by HavenOx.
+      </p>
+      <div className="flex gap-4">
+        <Link
+          to="/createtent"
+          className="px-6 py-3 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-black font-semibold shadow-lg transition"
+        >
+          Create Tent
+        </Link>
+        <Link
+          to="/livetent"
+          className="px-6 py-3 rounded-xl border border-cyan-400 hover:bg-cyan-400 hover:text-black transition"
+        >
+          View Live Tents
+        </Link>
       </div>
-
-      {/* Hero */}
-      <main className="z-20 max-w-3xl px-6 relative">
-        <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-[#00FFA3] via-[#00E8C8] to-[#00FFA3] bg-clip-text text-transparent mb-6 neon-text">
-          HavenOx Core Escrow Network
-        </h1>
-        <p className="text-gray-300 text-lg md:text-xl leading-relaxed mb-10 neon-text">
-          Secure peer-to-peer NFT and token trades powered by Kaspa escrow.
-          Create offers, trade safely, or list NFTs for sale or swap.
-        </p>
-
-        {/* CTA Buttons */}
-        <div className="flex flex-col items-center justify-center gap-6 z-30 relative">
-          <Link
-            to="/marketplace"
-            className="btn-neon px-10 py-3 font-semibold border border-[#00E8C8]/50 text-[#00FFA3] hover:bg-[#00E8C8]/20 transition"
-          >
-            🛒 View Marketplace
-          </Link>
-          <Link
-            to="/create"
-            className="btn-neon px-10 py-3 font-semibold border border-[#00E8C8]/50 text-[#00FFA3] hover:bg-[#00E8C8]/20 transition"
-          >
-            ✨ Create Listing
-          </Link>
-
-          {/* 🌟 Central Highlighted Button */}
-          <Link
-            to="/create-tent"
-            className="relative px-12 py-5 mt-6 rounded-full font-bold text-2xl text-[#00FFA3] border border-[#00E8C8]/70 bg-black/40 backdrop-blur-lg shadow-[0_0_25px_#00E8C8] hover:shadow-[0_0_45px_#00FFA3] hover:bg-[#00E8C8]/20 transition-all duration-500 animate-pulse"
-          >
-            🎪 Start P2P Tent Trade
-            <span className="absolute inset-0 rounded-full bg-[#00E8C8]/30 blur-xl opacity-50 -z-10 animate-pulse"></span>
-          </Link>
-
-          <p className="mt-6 text-[#00E8C8]/80 text-sm sm:text-base">
-            Trade securely in real-time using the HavenOx Tent system.
-          </p>
-        </div>
-      </main>
     </div>
   );
 }
