@@ -6,17 +6,16 @@ import "./index.css";
 import { WalletProvider } from "./context/WalletContext";
 import { ListingsProvider } from "./context/ListingsContext";
 
+/* -------------------------------------------
+   Optional: Safe Intercom Init
+---------------------------------------------*/
 function safeInitIntercom() {
   try {
-    if (typeof window !== "undefined") {
-      if (window.Intercom && typeof window.Intercom === "function") {
-        window.Intercom("boot", {
-          app_id: "YOUR_APP_ID",
-        });
-        console.log("✅ Intercom initialized safely.");
-      } else {
-        console.log("⚠️ Intercom not found – skipping init.");
-      }
+    if (typeof window !== "undefined" && window.Intercom) {
+      window.Intercom("boot", { app_id: "YOUR_APP_ID" });
+      console.log("✅ Intercom initialized safely.");
+    } else {
+      console.log("⚠️ Intercom not found – skipping init.");
     }
   } catch (err) {
     console.error("❌ Intercom init error:", err);
@@ -25,11 +24,12 @@ function safeInitIntercom() {
 
 safeInitIntercom();
 
+/* -------------------------------------------
+   Normalize base URL for BrowserRouter
+---------------------------------------------*/
 const baseUrl = import.meta.env.BASE_URL ?? "/";
-
-function normaliseBase(path) {
-  if (!path) return "/";
-  if (path === "." || path === "./") return "/";
+function normalizeBase(path) {
+  if (!path || path === "." || path === "./") return "/";
   try {
     const url = new URL(path, "http://localhost");
     const cleaned = url.pathname.replace(/\/+$/, "");
@@ -39,8 +39,11 @@ function normaliseBase(path) {
   }
 }
 
-const basename = normaliseBase(baseUrl);
+const basename = normalizeBase(baseUrl);
 
+/* -------------------------------------------
+   Mount React App
+---------------------------------------------*/
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <BrowserRouter basename={basename}>
@@ -52,5 +55,3 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     </BrowserRouter>
   </React.StrictMode>
 );
- 
-// Trigger rebuild

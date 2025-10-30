@@ -1,81 +1,74 @@
 import { useState } from "react";
 import { useWallet } from "../context/WalletContext";
-import { createTentSession } from "../lib/apiClient";
+import { useNavigate } from "react-router-dom";
 
-const initialForm = {
-  name: "",
-  nftId: "",
-  partnerWallet: "",
-  kasAmount: "",
-};
-
+/**
+ * CreateTent.jsx
+ * ---------------------------------------------------------------
+ * Handles NFT upload, tent creation, and automatic redirect to
+ * the Tent Status page after successful creation.
+ */
 export default function CreateTent() {
-  const { address, connectWallet, signMessageWithWallet } = useWallet();
-  const [form, setForm] = useState(initialForm);
-  const [submitted, setSubmitted] = useState(null);
-  const [message, setMessage] = useState("");
+  const { address, connectWallet } = useWallet();
+  const navigate = useNavigate();
+  const [form, setForm] = useState({
+    nftId: "",
+    kasAmount: "",
+    partnerEmail: "",
+  });
+  const [preview, setPreview] = useState("");
   const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
 
   const handleChange = (e) =>
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    const f = e.dataTransfer?.files?.[0] || e.target.files?.[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => setPreview(ev.target.result);
+    reader.readAsDataURL(f);
+  };
 
   const ensureWallet = async () => {
     if (address) return address;
-    const result = await connectWallet();
-    return result?.address;
+    const res = await connectWallet();
+    return res?.address;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
     setMessage("");
     try {
-      setLoading(true);
-      const walletAddress = await ensureWallet();
-      if (!walletAddress) throw new Error("Wallet connection is required.");
-
-      const signingMessage = `Create Tent ${form.name} with ${form.partnerWallet} @ ${Date.now()}`;
-      const signature = await signMessageWithWallet(signingMessage, {
-        walletAddress,
-      });
+      const wallet = await ensureWallet();
+      if (!wallet) throw new Error("Wallet connection required.");
 
       const payload = {
-        tentName: form.name,
-        creatorAddress: walletAddress,
-        partnerAddress: form.partnerWallet,
-        creatorOffer: {
-          nftId: form.nftId || null,
-          kasAmount: form.kasAmount ? Number(form.kasAmount) : 0,
-        },
-        message: signingMessage,
-        signature,
+        seller: wallet,
+        buyer: form.partnerEmail || null,
+        nftId: form.nftId || "Unnamed NFT",
+        price: form.kasAmount ? Number(form.kasAmount) : 0,
+        metadata: { image: preview || null },
       };
 
-      const tent = await createTentSession(payload);
-      setSubmitted(tent);
-      setMessage("✅ Tent created and signature recorded.");
-      setForm(initialForm);
+      const res = await fetch(`${import.meta.env.VITE_API_BASE}/tent/create`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Creation failed.");
+      setMessage("✅ Tent created successfully!");
+      navigate(`/tent/status/${data.tent.id}`);
     } catch (err) {
-      console.error(err);
       setMessage(`⚠️ ${err.message}`);
     } finally {
       setLoading(false);
     }
   };
-
-  if (submitted)
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center text-center text-gray-100">
-        <h2 className="text-3xl text-cyan-400 font-bold mb-4">
-          Tent Created!
-        </h2>
-        <p className="text-gray-400 mb-2">
-          Share your tent link with your trading partner.
-        </p>
-        <code className="text-xs bg-black/40 px-3 py-1 rounded">
-          /tent/{submitted.id}
-        </code>
-      </div>
-    );
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-950 text-gray-100">
@@ -87,14 +80,6 @@ export default function CreateTent() {
           Create New Tent
         </h2>
         <input
-          name="name"
-          placeholder="Tent name"
-          value={form.name}
-          onChange={handleChange}
-          required
-          className="w-full px-4 py-3 rounded-lg bg-gray-800 border border-gray-700 focus:border-cyan-400 outline-none"
-        />
-        <input
           name="nftId"
           placeholder="NFT ID"
           value={form.nftId}
@@ -103,19 +88,45 @@ export default function CreateTent() {
         />
         <input
           name="kasAmount"
-          placeholder="Kaspa amount (optional)"
+          placeholder="Kaspa amount"
           value={form.kasAmount}
           onChange={handleChange}
           className="w-full px-4 py-3 rounded-lg bg-gray-800 border border-gray-700 focus:border-cyan-400 outline-none"
         />
         <input
-          name="partnerWallet"
-          placeholder="Partner Kaspa wallet address"
-          value={form.partnerWallet}
+          name="partnerEmail"
+          type="email"
+          placeholder="Partner Email"
+          value={form.partnerEmail}
           onChange={handleChange}
-          required
           className="w-full px-4 py-3 rounded-lg bg-gray-800 border border-gray-700 focus:border-cyan-400 outline-none"
         />
+
+        <div
+          onDrop={handleDrop}
+          onDragOver={(e) => e.preventDefault()}
+          className="w-full h-48 border-2 border-dashed border-cyan-400/40 rounded-lg flex flex-col items-center justify-center hover:border-cyan-400 transition cursor-pointer"
+        >
+          {preview ? (
+            <img
+              src={preview}
+              alt="NFT Preview"
+              className="w-full h-full object-cover rounded-lg"
+            />
+          ) : (
+            <>
+              <p className="text-cyan-400">Drag & Drop NFT Image</p>
+              <p className="text-gray-500 text-sm">or click to choose a file</p>
+            </>
+          )}
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleDrop}
+          />
+        </div>
+
         <button
           type="submit"
           disabled={loading}

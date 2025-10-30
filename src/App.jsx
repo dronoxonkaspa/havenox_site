@@ -9,6 +9,8 @@ import Create from "./pages/Create";
 import Mint from "./pages/Mint";
 import LiveTent from "./pages/LiveTent";
 import CreateTent from "./pages/CreateTent";
+import TentStatus from "./pages/TentStatus";
+import JoinTent from "./pages/JoinTent";
 import "./index.css";
 
 export default function App() {
@@ -25,8 +27,9 @@ export default function App() {
           <Route path="/about" element={<About />} />
           <Route path="/faq" element={<FAQ />} />
           <Route path="/create-tent" element={<CreateTent />} />
-          <Route path="/tents" element={<LiveTent />} />
-          <Route path="/tent/:id" element={<LiveTent />} />
+          <Route path="/tent/live/:id" element={<LiveTent />} />
+          <Route path="/tent/status/:id" element={<TentStatus />} />
+          <Route path="/tent/:id" element={<JoinTent />} /> {/* ✅ Added */}
         </Routes>
       </main>
 

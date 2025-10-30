@@ -1,21 +1,37 @@
-import { useMemo } from "react";
-import { useListings } from "../context/ListingsContext";
+import { useEffect, useState } from "react";
 
 export default function Marketplace() {
-  const { listings, loading, error, refresh } = useListings();
+  const [listings, setListings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const sorted = useMemo(() => {
-    return [...listings].sort(
-      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-    );
-  }, [listings]);
+  async function fetchListings() {
+    try {
+      setLoading(true);
+      const res = await fetch(`${import.meta.env.VITE_API_BASE}/marketplace`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setListings(data.listings || []);
+    } catch (err) {
+      console.error("❌ Failed to load listings:", err);
+      setError(err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    fetchListings();
+  }, []);
 
   return (
     <div className="min-h-screen pt-10 px-6 text-gray-100">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold text-[#00FFA3]">Kaspa Marketplace</h1>
+        <h1 className="text-3xl font-bold text-[#00FFA3]">
+          HavenOx Marketplace
+        </h1>
         <button
-          onClick={refresh}
+          onClick={fetchListings}
           className="text-sm bg-[#00E8C8]/30 border border-[#00E8C8]/50 text-[#00FFA3] px-4 py-2 rounded-lg hover:bg-[#00E8C8]/40 transition"
         >
           Refresh
@@ -29,43 +45,41 @@ export default function Marketplace() {
         </p>
       )}
 
-      {!loading && sorted.length === 0 && (
-        <p className="text-gray-500">No live listings yet. Be the first to mint!</p>
+      {!loading && listings.length === 0 && (
+        <p className="text-gray-500">No NFTs listed yet. Be the first to mint!</p>
       )}
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {sorted.map((listing) => (
+        {listings.map((nft) => (
           <article
-            key={listing.id}
+            key={nft.id}
             className="border border-[#00E8C8]/30 rounded-2xl p-5 bg-black/40"
           >
-            {listing.image_url && (
+            {nft.metadata?.image && (
               <img
-                src={listing.image_url}
-                alt={listing.name}
+                src={nft.metadata.image}
+                alt={nft.metadata.name || nft.nftId}
                 className="w-full h-52 object-cover rounded-xl mb-4"
                 loading="lazy"
               />
             )}
             <h2 className="text-xl font-semibold text-[#00E8C8] mb-1">
-              {listing.name}
+              {nft.metadata?.name || nft.nftId}
             </h2>
             <p className="text-gray-400 text-sm mb-2">
-              {listing.type || "NFT"}
+              {nft.metadata?.description || "Kaspa NFT"}
             </p>
             <p className="text-gray-300 font-medium mb-2">
-              {listing.price} KAS • {listing.status || "listed"}
+              {nft.price ? `${nft.price} KAS` : "Not for sale"}
             </p>
             <p className="text-xs text-gray-500 mb-1">
-              Seller: {listing.seller?.slice(0, 6)}…
-              {listing.seller?.slice(-4)}
+              Creator: {nft.creator?.slice(0, 6)}…{nft.creator?.slice(-4)}
             </p>
             <p className="text-xs text-gray-500 mb-1">
-              Royalty: {listing.royaltyPercent ?? 0}% →{" "}
-              {listing.royaltyAddress || "-"}
+              Royalty: {nft.royaltyPercent ?? 0}%
             </p>
             <p className="text-xs text-gray-500">
-              Created: {new Date(listing.createdAt).toLocaleString()}
+              Minted: {new Date(nft.createdAt).toLocaleString()}
             </p>
           </article>
         ))}

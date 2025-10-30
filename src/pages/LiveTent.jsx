@@ -1,205 +1,125 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { getTent, API_BASE } from "../lib/apiClient";
+import { io } from "socket.io-client";
+import { useWallet } from "../context/WalletContext";
+
+const socket = io(import.meta.env.VITE_API_BASE.replace("/api", ""), {
+  transports: ["websocket"],
+});
 
 export default function LiveTent() {
   const { id } = useParams();
-  const [tent, setTent] = useState(null);
-  const [tents, setTents] = useState([]);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
+  const { address, connectWallet } = useWallet();
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const [onlineCount, setOnlineCount] = useState(0);
+  const [statusFeed, setStatusFeed] = useState([]);
 
   useEffect(() => {
-    let ignore = false;
+    socket.emit("joinTent", id);
+    socket.on("presenceUpdate", ({ online }) => setOnlineCount(online));
+    socket.on("systemMessage", (msg) =>
+      setMessages((prev) => [...prev, { system: true, message: msg }])
+    );
+    socket.on("chatMessage", (msg) => setMessages((p) => [...p, msg]));
+    socket.on("transactionStatus", (data) =>
+      setStatusFeed((p) => [...p, data])
+    );
 
-    async function loadTent() {
-      try {
-        setLoading(true);
-        setError("");
-        const data = await getTent(id);
-        if (!ignore) setTent(data);
-      } catch (err) {
-        console.error(err);
-        if (!ignore) {
-          setError(err.message || "Unable to load tent");
-          setTent(null);
-        }
-      } finally {
-        if (!ignore) setLoading(false);
-      }
-    }
-
-    async function loadAll() {
-      try {
-        setLoading(true);
-        setError("");
-        const response = await fetch(`${API_BASE}/tent`);
-        if (!response.ok) throw new Error(`Request failed: ${response.status}`);
-        const res = await response.json();
-        if (!ignore)
-          setTents(Array.isArray(res?.tents) ? res.tents : []);
-      } catch (err) {
-        console.error(err);
-        if (!ignore) {
-          setError(err.message || "Unable to load tents");
-          setTents([]);
-        }
-      } finally {
-        if (!ignore) setLoading(false);
-      }
-    }
-
-    if (id) loadTent();
-    else loadAll();
-
-    return () => {
-      ignore = true;
-    };
+    return () => socket.disconnect();
   }, [id]);
 
-  const partnerSigned = useMemo(() => Boolean(tent?.signatures?.partner), [tent]);
-  const creatorSigned = useMemo(() => Boolean(tent?.signatures?.creator), [tent]);
+  const sendMessage = async (e) => {
+    e.preventDefault();
+    const wallet = address || (await connectWallet())?.address;
+    if (!wallet) return alert("Connect wallet first.");
+    socket.emit("chatMessage", { tentId: id, sender: wallet, message: input });
+    setInput("");
+  };
 
-  // ---- ALL TENTS LIST VIEW ----
-  if (!id) {
-    if (loading)
-      return (
-        <div className="min-h-screen flex items-center justify-center text-gray-400">
-          Loading tents…
-        </div>
-      );
-
-    if (error)
-      return (
-        <div className="min-h-screen flex flex-col items-center justify-center text-center text-red-400">
-          <p className="mb-2">{error}</p>
-          <p className="text-gray-500 text-sm">Unable to fetch tent directory.</p>
-        </div>
-      );
-
-    return (
-      <div className="min-h-screen bg-gray-950 text-gray-100 p-6">
-        <h2 className="text-4xl font-bold text-cyan-400 text-center mb-8">
-          Live NFT Tents
-        </h2>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {tents.map((entry) => (
-            <div
-              key={entry.id}
-              className="bg-gray-900 p-6 rounded-xl shadow-lg border border-gray-800"
-            >
-              <h3 className="text-xl font-semibold text-cyan-300 mb-2">
-                {entry.tentName}
-              </h3>
-              <p className="text-sm text-gray-400 mb-1">
-                NFT: {entry.creatorOffer?.nftId || "TBD"}
-              </p>
-              <p className="text-xs text-gray-500 mb-1">
-                Creator: {entry.creatorAddress?.slice(0, 6)}…
-                {entry.creatorAddress?.slice(-4)}
-              </p>
-              <p className="text-xs text-gray-500 mb-4">
-                Partner: {entry.partnerAddress?.slice(0, 6)}…
-                {entry.partnerAddress?.slice(-4)}
-              </p>
-              <a
-                href={`/tent/${entry.id}`}
-                className="text-cyan-300 text-sm underline hover:text-cyan-200"
-              >
-                View Tent
-              </a>
-            </div>
-          ))}
-          {tents.length === 0 && (
-            <p className="col-span-full text-center text-gray-500">
-              No live tents yet.
-            </p>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // ---- SINGLE TENT VIEW ----
-  if (loading)
-    return (
-      <div className="min-h-screen flex items-center justify-center text-gray-400">
-        Loading tent…
-      </div>
-    );
-
-  if (error)
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center text-center text-red-400">
-        <p className="mb-2">{error}</p>
-        <p className="text-gray-500 text-sm">Check the URL and try again.</p>
-      </div>
-    );
-
-  if (!tent)
-    return (
-      <div className="min-h-screen flex items-center justify-center text-gray-400">
-        Tent not found.
-      </div>
-    );
+  const sendTransactionStatus = (status) => {
+    const wallet = address || "Unknown";
+    socket.emit("transactionUpdate", { tentId: id, sender: wallet, status });
+  };
 
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100 p-6">
-      <div className="max-w-3xl mx-auto">
-        <h2 className="text-4xl font-bold text-cyan-400 text-center mb-4">
-          {tent.tentName}
+    <div className="min-h-screen bg-gray-950 text-gray-100 flex flex-col items-center justify-center p-6">
+      <div className="w-full max-w-3xl bg-gray-900 p-6 rounded-2xl shadow-lg flex flex-col space-y-4">
+        <h2 className="text-2xl font-bold text-cyan-400 text-center">
+          Live Tent: {id}
         </h2>
-        <p className="text-center text-sm text-gray-500 mb-8">
-          Tent ID: {tent.id}
+
+        <p className="text-center text-gray-400">
+          👥 Online users: <b>{onlineCount}</b>
         </p>
 
-        <section className="grid sm:grid-cols-2 gap-6 mb-10">
-          <div className="bg-gray-900 p-6 rounded-xl border border-gray-800">
-            <h3 className="text-xl font-semibold text-cyan-300 mb-3">Creator</h3>
-            <p className="text-xs text-gray-500 mb-2">{tent.creatorAddress}</p>
-            <p className="text-sm text-gray-400 mb-1">
-              Offer: {tent.creatorOffer?.nftId || "NFT TBD"}
+        {/* Chat window */}
+        <div className="flex-1 overflow-y-auto h-60 border border-gray-700 rounded-lg p-4 bg-gray-800">
+          {messages.map((m, i) => (
+            <p key={i} className={m.system ? "text-gray-500" : ""}>
+              {m.system ? (
+                <em>{m.message}</em>
+              ) : (
+                <span>
+                  <b>{m.sender.slice(0, 6)}:</b> {m.message}
+                </span>
+              )}
             </p>
-            <p className="text-sm text-gray-400 mb-4">
-              Kas: {tent.creatorOffer?.kasAmount || 0}
-            </p>
-            <p
-              className={`text-sm font-semibold ${
-                creatorSigned ? "text-green-400" : "text-yellow-400"
-              }`}
+          ))}
+        </div>
+
+        {/* Message input */}
+        <form onSubmit={sendMessage} className="flex space-x-2">
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Type a message..."
+            className="flex-1 px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 focus:border-cyan-400 outline-none"
+          />
+          <button
+            type="submit"
+            className="bg-cyan-500 hover:bg-cyan-600 text-black font-semibold px-4 rounded-lg"
+          >
+            Send
+          </button>
+        </form>
+
+        {/* Transaction controls */}
+        <div className="mt-4 border-t border-gray-700 pt-4">
+          <h3 className="text-lg text-cyan-400 mb-2">Transaction Status</h3>
+
+          <div className="flex space-x-2">
+            <button
+              onClick={() => sendTransactionStatus("NFT sent")}
+              className="bg-green-500 text-black px-3 py-1 rounded"
             >
-              {creatorSigned ? "Signature received" : "Awaiting signature"}
-            </p>
+              NFT Sent
+            </button>
+            <button
+              onClick={() => sendTransactionStatus("KAS received")}
+              className="bg-blue-500 text-black px-3 py-1 rounded"
+            >
+              KAS Received
+            </button>
+            <button
+              onClick={() => sendTransactionStatus("Trade Completed")}
+              className="bg-yellow-400 text-black px-3 py-1 rounded"
+            >
+              Trade Completed
+            </button>
           </div>
 
-          <div className="bg-gray-900 p-6 rounded-xl border border-gray-800">
-            <h3 className="text-xl font-semibold text-cyan-300 mb-3">Partner</h3>
-            <p className="text-xs text-gray-500 mb-2">{tent.partnerAddress}</p>
-            <p className="text-sm text-gray-400 mb-1">
-              Offer: {tent.partnerOffer?.nftId || "Pending"}
-            </p>
-            <p className="text-sm text-gray-400 mb-4">
-              Kas: {tent.partnerOffer?.kasAmount || 0}
-            </p>
-            <p
-              className={`text-sm font-semibold ${
-                partnerSigned ? "text-green-400" : "text-yellow-400"
-              }`}
-            >
-              {partnerSigned ? "Signature received" : "Awaiting partner"}
-            </p>
-          </div>
-        </section>
-
-        <div className="bg-black/40 border border-gray-800 rounded-xl p-6">
-          <h4 className="text-lg text-cyan-300 font-semibold mb-2">Status</h4>
-          <p className="text-gray-300 mb-1">{tent.state}</p>
-          {tent.settlementTx && (
-            <p className="text-sm text-gray-400">
-              Settlement Transaction:{" "}
-              <span className="text-cyan-300">{tent.settlementTx}</span>
-            </p>
-          )}
+          {/* Transaction log */}
+          <ul className="mt-3 space-y-1 text-sm text-gray-300 max-h-32 overflow-y-auto">
+            {statusFeed.map((s, i) => (
+              <li key={i}>
+                <b>{s.sender.slice(0, 6)}:</b> {s.status}{" "}
+                <span className="text-gray-500 text-xs">
+                  {new Date(s.time).toLocaleTimeString()}
+                </span>
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
     </div>
