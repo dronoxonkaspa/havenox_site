@@ -1,7 +1,8 @@
-// src/lib/apiClient.js — HavenOx API Client (Codex v1.2)
+// src/lib/apiClient.js — HavenOx API Client (Codex v1.3)
 export const API_BASE =
   import.meta.env.VITE_API_BASE || "http://localhost:5000";
 
+// 🔧 Generic request helper
 async function request(path, options = {}) {
   const { method = "GET", headers = {}, body, signal } = options;
   const url = `${API_BASE}${path}`;
@@ -29,17 +30,46 @@ async function request(path, options = {}) {
     const msg = data?.error || `Request failed (${res.status})`;
     throw new Error(msg);
   }
+
   return data;
 }
 
-// Tent + Marketplace helpers
+// 🧩 Tent Endpoints
 export const getTent = async (id) => request(`/tent/${id}`);
 export const createTentSession = async (payload) =>
   request("/tent/create", { method: "POST", body: payload });
+
+// 🛒 Marketplace Endpoints
 export const fetchListings = async () => request("/marketplace/listings");
 export const postListing = async (data) =>
   request("/marketplace/listings", { method: "POST", body: data });
+
+// 🪙 Minting & Verification
 export const verifySignature = async (data) =>
   request("/verify", { method: "POST", body: data });
+
+export const mintNft = async (payload) =>
+  request("/mint-nft", { method: "POST", body: payload });
+
+// 🤝 Escrow Endpoints
+export const getEscrows = async (wallet) => {
+  const url = wallet ? `/escrows?wallet=${wallet}` : "/escrows";
+  return request(url);
+};
+
+export const signEscrow = async (id, data) =>
+  request(`/escrows/${id}/sign`, { method: "POST", body: data });
+
+// 📊 Trade History
+export const getTradeHistory = async (wallet) => {
+  const url = wallet ? `/trade-history?wallet=${wallet}` : "/trade-history";
+  return request(url);
+};
+
+export const addTradeRecord = async (data) =>
+  request("/trade-history", { method: "POST", body: data });
+
+// ⚙️ Config
+export const getTreasuryConfig = async () => request("/config/treasury");
 
 export { request };
