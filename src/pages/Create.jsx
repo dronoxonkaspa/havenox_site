@@ -5,9 +5,9 @@ import { useWallet } from "../context/WalletContext";
 export default function Create() {
   const { address } = useWallet();
   const { addListing } = useListings();
-
   const [formData, setFormData] = useState({
     name: "",
+    nftId: "",
     type: "",
     price: "",
     image_url: "",
@@ -15,8 +15,7 @@ export default function Create() {
   });
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
-
-  const LISTING_FEE = 10; // 10 KAS non-refundable fee
+  const LISTING_FEE = 10; // 10 KAS non-refundable
 
   function handleChange(e) {
     const { name, value, type, checked } = e.target;
@@ -31,13 +30,12 @@ export default function Create() {
     if (!address) return setMsg("⚠️ Connect wallet first.");
     if (!formData.name || !formData.price)
       return setMsg("⚠️ Name and Price required.");
-
     try {
       setLoading(true);
       setMsg("Posting listing...");
-
       await addListing({
         name: formData.name,
+        nftId: formData.nftId || undefined,
         type: formData.type,
         price: parseFloat(formData.price),
         image_url: formData.image_url,
@@ -46,10 +44,10 @@ export default function Create() {
         network: "Kaspa",
         seller: address,
       });
-
       setMsg("✅ Listing created (10 KAS non-refundable fee recorded).");
       setFormData({
         name: "",
+        nftId: "",
         type: "",
         price: "",
         image_url: "",
@@ -66,7 +64,6 @@ export default function Create() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center text-center px-6">
       <h1 className="text-4xl font-bold mb-8 neon-text">Create Listing</h1>
-
       <div className="glow-box w-full max-w-md p-8">
         <form onSubmit={handleSubmit}>
           <input
@@ -78,7 +75,14 @@ export default function Create() {
             className="mb-4 w-full"
             required
           />
-
+          <input
+            type="text"
+            name="nftId"
+            placeholder="Minted NFT ID (optional)"
+            value={formData.nftId}
+            onChange={handleChange}
+            className="mb-4 w-full"
+          />
           <input
             type="text"
             name="type"
@@ -87,7 +91,6 @@ export default function Create() {
             onChange={handleChange}
             className="mb-4 w-full"
           />
-
           <input
             type="number"
             name="price"
@@ -97,7 +100,6 @@ export default function Create() {
             className="mb-4 w-full"
             required
           />
-
           <input
             type="text"
             name="image_url"
@@ -106,28 +108,15 @@ export default function Create() {
             onChange={handleChange}
             className="mb-4 w-full"
           />
-
-          <label className="flex items-center mb-4">
-            <input
-              type="checkbox"
-              name="trade"
-              checked={formData.trade}
-              onChange={handleChange}
-              className="mr-2"
-            />
-            Enable Trading Option
-          </label>
-
           <button
             type="submit"
             disabled={loading}
-            className="btn-primary w-full"
+            className="w-full bg-cyan-500 hover:bg-cyan-600 text-black font-semibold py-3 rounded-lg transition"
           >
-            {loading ? "Posting..." : "Create Listing"}
+            {loading ? "Creating..." : "Create Listing"}
           </button>
+          {msg && <p className="text-sm text-cyan-300 mt-3">{msg}</p>}
         </form>
-
-        {msg && <p className="mt-4 text-[#00FFA3]">{msg}</p>}
       </div>
     </div>
   );
