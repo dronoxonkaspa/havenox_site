@@ -2,7 +2,6 @@
 export const API_BASE =
   import.meta.env.VITE_API_BASE || "http://localhost:5000";
 
-// 🔧 Generic request helper
 async function request(path, options = {}) {
   const { method = "GET", headers = {}, body, signal } = options;
   const url = `${API_BASE}${path}`;
@@ -18,6 +17,7 @@ async function request(path, options = {}) {
   const res = await fetch(url, init);
   const text = await res.text();
   let data = null;
+
   if (text) {
     try {
       data = JSON.parse(text);
@@ -44,7 +44,11 @@ export const fetchListings = async () => request("/marketplace/listings");
 export const postListing = async (data) =>
   request("/marketplace/listings", { method: "POST", body: data });
 
-// 🪙 Minting & Verification
+// 🪙 Session Verification
+export const verifySession = async (data) =>
+  request("/session/verify", { method: "POST", body: data });
+
+// 🪙 Minting & Signature Verification
 export const verifySignature = async (data) =>
   request("/verify", { method: "POST", body: data });
 

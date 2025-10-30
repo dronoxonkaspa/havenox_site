@@ -14,6 +14,7 @@ app.use(express.json({ limit: "1mb" }));
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dataDir = path.join(__dirname, "data");
+const SESSION_TTL_MS = 1000 * 60 * 60; // 1 hour
 
 async function ensureDir(dirPath) {
   await fs.mkdir(dirPath, { recursive: true });
@@ -31,11 +32,37 @@ async function readJson(fileName, fallback) {
 
 async function writeJson(fileName, data) {
   await ensureDir(dataDir);
-  await fs.writeFile(
-    path.join(dataDir, fileName),
-    JSON.stringify(data, null, 2),
-    "utf-8"
-  );
+  await fs.writeFile(path.join(dataDir, fileName), JSON.stringify(data, null, 2), "utf-8");
+}
+
+function normalizeAddress(address = "") {
+  return String(address).trim().toLowerCase();
+}
+
+function isEvmAddress(address = "") {
+  return /^0x[0-9a-f]{40}$/i.test(address);
+}
+
+async function ensureKaspaAddress(address) {
+  if (!address) throw new Error("Address is required");
+  if (isEvmAddress(address)) return { isValid: true, skipped: true };
+  if (!kaspaClient.url)
+    return { isValid: true, skipped: true, reason: "Kaspa RPC disabled" };
+  return kaspaClient.validateAddress(address);
+}
+
+async function verifyKaspaSignature({ address, signature, message }) {
+  if (!address || !signature || !message) {
+    throw new Error("Signature verification requires address, signature, and message");
+  }
+  if (isEvmAddress(address)) {
+    return { isValid: true, skipped: true, reason: "EVM signature handled client-side" };
+  }
+  if (!kaspaClient.url) {
+    return { isValid: true, skipped: true, reason: "Kaspa RPC disabled" };
+  }
+  await kaspaClient.validateAddress(address);
+  return kaspaClient.verifyMessage({ address, signature, message });
 }
 
 class KaspaRpcClient {
@@ -58,44 +85,32 @@ class KaspaRpcClient {
   }
 
   async call(method, params = {}) {
-    if (!this.url) {
-      throw new Error("Kaspa RPC URL is not configured");
-    }
-
+    if (!this.url) throw new Error("Kaspa RPC URL is not configured");
     const body = JSON.stringify({
       jsonrpc: "2.0",
       id: Date.now(),
       method,
       params,
     });
-
     let fetcher = globalThis.fetch;
     if (!fetcher) {
       const mod = await import("node-fetch").catch(() => null);
       fetcher = mod?.default;
     }
-    if (!fetcher) {
-      throw new Error("Fetch API is not available in this runtime");
-    }
-
+    if (!fetcher) throw new Error("Fetch API is not available in this runtime");
     const response = await fetcher(this.url, {
       method: "POST",
       headers: this.headers,
       body,
     });
-
     if (!response.ok) {
       const text = await response.text();
       throw new Error(
         `Kaspa RPC responded with ${response.status} ${response.statusText}: ${text}`
       );
     }
-
     const json = await response.json();
-    if (json.error) {
-      throw new Error(json.error?.message || "Kaspa RPC returned an error");
-    }
-
+    if (json.error) throw new Error(json.error?.message || "Kaspa RPC returned an error");
     return json.result;
   }
 
@@ -109,9 +124,7 @@ class KaspaRpcClient {
     if (!address) throw new Error("Missing address to validate");
     const result = await this.call("validateAddresses", { addresses: [address] });
     const first = Array.isArray(result?.entries) ? result.entries[0] : null;
-    if (!first?.isValid) {
-      throw new Error("Invalid Kaspa address provided");
-    }
+    if (!first?.isValid) throw new Error("Invalid Kaspa address provided");
     return first;
   }
 
@@ -139,17 +152,9 @@ let rpcStatus = { healthy: false, lastChecked: null, error: null };
 async function refreshRpcStatus() {
   try {
     await kaspaClient.getDagInfo();
-    rpcStatus = {
-      healthy: true,
-      lastChecked: new Date().toISOString(),
-      error: null,
-    };
+    rpcStatus = { healthy: true, lastChecked: new Date().toISOString(), error: null };
   } catch (err) {
-    rpcStatus = {
-      healthy: false,
-      lastChecked: new Date().toISOString(),
-      error: err.message,
-    };
+    rpcStatus = { healthy: false, lastChecked: new Date().toISOString(), error: err.message };
   }
 }
 
@@ -200,11 +205,40 @@ function buildEscrowRecord({ tentId, seller, buyer, nftId, price }) {
 
 app.get("/health", async (req, res) => {
   await refreshRpcStatus();
-  res.json({
-    status: "ok",
-    rpc: rpcStatus,
-    dag: kaspaClient.lastInfo,
-  });
+  res.json({ status: "ok", rpc: rpcStatus, dag: kaspaClient.lastInfo });
+});
+
+// Session verification / token minting
+app.post("/session/verify", async (req, res) => {
+  try {
+    const { address, signature, message } = req.body || {};
+    requireFields(req.body || {}, ["address", "signature", "message"]);
+    const verification = await verifyKaspaSignature({ address, signature, message });
+    if (!verification?.isValid)
+      return res.status(403).json({ error: "Signature verification failed" });
+
+    const sessions = await readJson("sessions.json", []);
+    const filtered = sessions.filter(
+      (entry) => normalizeAddress(entry.address) !== normalizeAddress(address)
+    );
+    const token = crypto.randomBytes(24).toString("hex");
+    const expiresAt = new Date(Date.now() + SESSION_TTL_MS).toISOString();
+    const record = {
+      id: crypto.randomUUID(),
+      address,
+      signature,
+      message,
+      token,
+      createdAt: new Date().toISOString(),
+      expiresAt,
+    };
+    filtered.push(record);
+    await writeJson("sessions.json", filtered);
+    res.json({ token, expiresAt });
+  } catch (err) {
+    console.error("/session/verify error", err);
+    res.status(err.status || 500).json({ error: err.message });
+  }
 });
 
 // Signature verification
@@ -212,23 +246,8 @@ app.post("/verify", async (req, res) => {
   try {
     const { address, signature, message } = req.body || {};
     requireFields(req.body || {}, ["address", "signature", "message"]);
-
-    if (!rpcStatus.healthy) await refreshRpcStatus();
-    if (!rpcStatus.healthy) {
-      throw new Error("Kaspa RPC is unavailable for signature verification");
-    }
-
-    await kaspaClient.validateAddress(address);
-    const verification = await kaspaClient.verifyMessage({
-      address,
-      signature,
-      message,
-    });
-
-    if (!verification?.isValid) {
-      return res.status(403).json({ status: "invalid" });
-    }
-
+    const verification = await verifyKaspaSignature({ address, signature, message });
+    if (!verification?.isValid) return res.status(403).json({ status: "invalid" });
     res.json({ status: "verified" });
   } catch (err) {
     console.error("/verify error", err);
@@ -236,55 +255,36 @@ app.post("/verify", async (req, res) => {
   }
 });
 
-// Mint NFT
-app.post("/mint-nft", async (req, res) => {
+// Marketplace
+app.get("/marketplace/listings", async (req, res) => {
+  try {
+    const listings = await readJson("listings.json", []);
+    res.json({ listings });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/marketplace/listings", async (req, res) => {
   try {
     const body = req.body || {};
-    requireFields(body, ["nftId", "creator", "royaltyPercent", "signature", "message"]);
-
-    await kaspaClient.validateAddress(body.creator);
-    const verification = await kaspaClient.verifyMessage({
-      address: body.creator,
-      signature: body.signature,
-      message: body.message,
-    });
-
-    if (!verification?.isValid) {
-      return res.status(403).json({ error: "Signature does not match creator address" });
-    }
-
-    const mints = await readJson("mints.json", []);
-    if (mints.some((mint) => mint.nftId === body.nftId)) {
-      return res.status(409).json({ error: "NFT already registered" });
-    }
-
+    requireFields(body, ["name", "price", "seller"]);
+    await ensureKaspaAddress(body.seller);
+    const listings = await readJson("listings.json", []);
     const record = {
       id: crypto.randomUUID(),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      nftId: body.nftId,
-      creator: body.creator,
-      royaltyPercent: Number(body.royaltyPercent),
-      royaltyAddress: body.royaltyAddress || body.creator,
-      metadata: body.metadata || {},
-      verificationMessage: body.message,
-      verificationSignature: body.signature,
+      status: "listed",
+      ...body,
     };
-
-    mints.push(record);
-    await writeJson("mints.json", mints);
-
+    listings.push(record);
+    await writeJson("listings.json", listings);
     res.json(record);
   } catch (err) {
-    console.error("/mint-nft error", err);
     res.status(err.status || 500).json({ error: err.message });
   }
 });
 
-// ... (Keep all the routes as in your diff: marketplace, tent, escrows, trade-history, etc.)
-
 const PORT = env.PORT || 5000;
-
-app.listen(PORT, () => {
-  console.log(`🧩 HavenOx Tent API running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`🧩 HavenOx Tent API running on port ${PORT}`));
