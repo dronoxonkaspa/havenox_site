@@ -53,3 +53,4 @@ logs/
 # Prevent accidental Netlify or Vercel local folders
 .netlify/
 .vercel/
+.vercel

@@ -8,7 +8,7 @@ const socket = io(API_BASE.replace("/api", ""), { transports: ["websocket"] });
 
 export default function LiveTent() {
   const { id } = useParams();
-  const { address, connectWallet } = useWallet();
+  const { address, connectWallet } = useWallet() || {};
   const [tent, setTent] = useState(null);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");

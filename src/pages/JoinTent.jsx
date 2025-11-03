@@ -5,7 +5,7 @@ import { useParams, useNavigate } from "react-router-dom";
 export default function JoinTent() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { address, connectWallet } = useWallet();
+  const { address, connectWallet } = useWallet() || {};
   const [tent, setTent] = useState(null);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);

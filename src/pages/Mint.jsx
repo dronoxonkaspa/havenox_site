@@ -4,7 +4,7 @@ import { useWallet } from "../context/WalletContext";
 import { verifySignature } from "../lib/apiClient";
 
 export default function Mint() {
-  const { address, connectWallet, signMessageWithWallet } = useWallet();
+  const { address, connectWallet, signMessageWithWallet } = useWallet() || {};
   const [nftName, setNftName] = useState("");
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);

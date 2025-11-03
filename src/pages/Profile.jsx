@@ -6,7 +6,7 @@ import ActiveEscrows from "../components/ActiveEscrows";
 import { CSVLink } from "react-csv";
 
 export default function Profile() {
-  const { address } = useWallet();
+  const { address } = useWallet() || {};
   const { listings, loading } = useListings();
 
   const [myListings, setMyListings] = useState([]);

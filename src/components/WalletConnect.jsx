@@ -1,7 +1,7 @@
 import { useWallet } from "../context/WalletContext";
 
 export default function WalletConnect() {
-  const { address, provider, connectWallet, disconnectWallet } = useWallet();
+  const { address, provider, connectWallet, disconnectWallet } = useWallet() || {};
 
   return (
     <div className="flex items-center gap-3">

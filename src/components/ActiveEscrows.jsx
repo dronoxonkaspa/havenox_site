@@ -4,7 +4,7 @@ import { useWallet } from "../context/WalletContext";
 import { getEscrows, signEscrow } from "../lib/apiClient";
 
 export default function ActiveEscrows({ wallet }) {
-  const { address, provider, connectWallet, signMessageWithWallet } = useWallet();
+  const { address, provider, connectWallet, signMessageWithWallet } = useWallet() || {};
   const [sessions, setSessions] = useState([]);
   const [msg, setMsg] = useState("");
 

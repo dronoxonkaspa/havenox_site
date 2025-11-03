@@ -9,7 +9,7 @@ import { useNavigate } from "react-router-dom";
  * the Tent Status page after successful creation.
  */
 export default function CreateTent() {
-  const { address, connectWallet } = useWallet();
+  const { address, connectWallet } = useWallet() || {};
   const navigate = useNavigate();
   const [form, setForm] = useState({
     nftId: "",

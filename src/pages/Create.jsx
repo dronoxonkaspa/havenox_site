@@ -3,7 +3,7 @@ import { useListings } from "../context/ListingsContext";
 import { useWallet } from "../context/WalletContext";
 
 export default function Create() {
-  const { address } = useWallet();
+  const { address } = useWallet() || {};
   const { addListing } = useListings();
   const [formData, setFormData] = useState({
     name: "",

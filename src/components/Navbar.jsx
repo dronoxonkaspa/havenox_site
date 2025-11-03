@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { useWallet } from "../context/WalletContext";
 
 export default function Navbar() {
-  const { address, connectWallet, disconnectWallet } = useWallet();
+  const { address, connectWallet, disconnectWallet } = useWallet() || {};
 
   return (
     <nav className="flex justify-between items-center px-6 py-3 bg-[#00040A] text-white shadow-lg border-b border-[#00E8C8]/10">
