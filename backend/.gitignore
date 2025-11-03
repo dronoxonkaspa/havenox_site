@@ -1,0 +1,32 @@
+# ---------------------------------------
+# HavenOx Backend .gitignore
+# ---------------------------------------
+
+# Node.js core
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build output / logs
+dist/
+logs/
+*.log
+
+# Environment and credentials
+.env
+.env.*
+*.key
+*.pem
+
+# Data files (local storage, temp)
+data/
+*.json.bak
+*.sqlite
+*.db
+
+# OS & editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

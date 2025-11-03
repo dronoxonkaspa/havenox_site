@@ -1,0 +1,27 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "HavenOx Tent API backend powered by Express",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dronoxonkaspa/havenox-backend.git"
+  },
+  "keywords": ["kaspa", "havenox", "tent", "marketplace", "nft"],
+  "author": "Israel Rodriguez Austin",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/dronoxonkaspa/havenox-backend/issues"
+  },
+  "homepage": "https://github.com/dronoxonkaspa/havenox-backend#readme",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "node-fetch": "^3.3.2"
+  }
+}

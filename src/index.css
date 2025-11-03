@@ -1,0 +1,146 @@
+@import "tailwindcss";
+
+/* === GLOBAL COLORS === */
+:root {
+  --kaspa: #00E8C8;
+  --kaspaMint: #00FFA3;
+}
+
+/* === BASE BACKGROUND === */
+body {
+  background: radial-gradient(circle at 50% 40%, #00242c 0%, #00040a 80%);
+  color: #ccffff;
+  font-family: 'Michroma', sans-serif;
+  overflow-x: hidden;
+  margin: 0;
+}
+
+/* === PARTICLE FLOAT === */
+@keyframes float {
+  0%,100% { transform: translateY(0); opacity:.3; }
+  50% { transform: translateY(-60px); opacity:.8; }
+}
+.animate-float { animation: float 10s ease-in-out infinite; }
+
+/* === GLOW PULSE === */
+@keyframes glowPulse {
+  0%,100% { opacity:.45; transform:scale(1); }
+  50% { opacity:.9; transform:scale(1.15); }
+}
+#parallaxGlow { animation: glowPulse 10s ease-in-out infinite; }
+
+/* === NEON TEXT === */
+.neon-text {
+  text-shadow:
+    0 0 10px var(--kaspa),
+    0 0 25px var(--kaspa),
+    0 0 50px var(--kaspaMint);
+}
+
+/* === BUTTONS === */
+.btn-neon {
+  position: relative;
+  overflow: hidden;
+  border: 2px solid var(--kaspa);
+  color: var(--kaspa);
+  border-radius: 9999px;
+  transition: all .3s ease;
+  box-shadow: 0 0 15px rgba(0,232,200,.3);
+}
+.btn-neon::before {
+  content: "";
+  position: absolute;
+  top: 0; left: -100%;
+  width: 100%; height: 100%;
+  background: linear-gradient(120deg, transparent, var(--kaspaMint), transparent);
+  transition: all .5s ease;
+}
+.btn-neon:hover::before { left: 100%; }
+.btn-neon:hover {
+  background: var(--kaspaMint);
+  color: #000;
+  box-shadow: 0 0 25px rgba(0,255,200,.7);
+}
+
+/* === WALLET BUTTON === */
+@keyframes walletPulse {
+  0%,100% { transform: scale(1); box-shadow: 0 0 10px rgba(0,232,200,0.3); }
+  50% { transform: scale(1.05); box-shadow: 0 0 25px rgba(0,255,163,0.6); }
+}
+.wallet-button {
+  border: 2px solid #00E8C8;
+  color: #00E8C8;
+  border-radius: 9999px;
+  padding: 0.6rem 1.6rem;
+  background: rgba(0,0,0,0.3);
+  backdrop-filter: blur(8px);
+  transition: all .3s ease;
+  animation: walletPulse 5s ease-in-out infinite;
+}
+.wallet-button:hover {
+  background: #00E8C8;
+  color: #000;
+}
+
+/* === GLOWING CARD / BOX (Marketplace + Forms) === */
+.glow-box,
+.nft-card {
+  border: 1px solid rgba(0,232,200,0.25);
+  background: rgba(255,255,255,0.03);
+  border-radius: 0.75rem;
+  box-shadow: 0 0 20px rgba(0,232,200,0.25);
+  transition: all 0.3s ease;
+}
+.glow-box:hover,
+.nft-card:hover {
+  border-color: rgba(0,255,163,0.8);
+  box-shadow: 0 0 35px rgba(0,255,163,0.8);
+  transform: translateY(-3px);
+}
+
+/* === INPUT FIELDS === */
+input, select, textarea {
+  background: rgba(0,0,0,0.4);
+  border: 1px solid rgba(0,232,200,0.3);
+  border-radius: 8px;
+  color: #ccffff;
+  padding: 10px;
+  outline: none;
+  width: 100%;
+  transition: all 0.3s ease;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--kaspaMint);
+  box-shadow: 0 0 10px rgba(0,255,163,0.5);
+}
+
+/* === NAVBAR ANIMATION === */
+@keyframes navbarGlow {
+  0%, 100% { filter: drop-shadow(0 0 6px #00FFA3); }
+  50% { filter: drop-shadow(0 0 14px #00E8C8); }
+}
+.animate-navbarGlow {
+  animation: navbarGlow 4s ease-in-out infinite;
+}
+/* === PROFILE PAGE EXTRAS === */
+.glow-divider {
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--kaspa), transparent);
+  opacity: 0.4;
+  border-radius: 2px;
+  margin: 1.5rem 0;
+}
+.disconnect-button:hover {
+  animation: disconnectPulse 1s ease-in-out infinite alternate;
+}
+@keyframes disconnectPulse {
+  from { box-shadow: 0 0 8px rgba(255,85,85,0.4); }
+  to   { box-shadow: 0 0 18px rgba(255,85,85,0.8); }
+}
+.disconnect-button:hover {
+  animation: disconnectPulse 1s ease-in-out infinite alternate;
+}
+@keyframes disconnectPulse {
+  from { box-shadow: 0 0 8px rgba(255,85,85,0.4); }
+  to   { box-shadow: 0 0 18px rgba(255,85,85,0.8); }
+}

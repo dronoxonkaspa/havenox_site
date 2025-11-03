@@ -1,0 +1,55 @@
+# ---------------------------------------
+# HavenOx Frontend .gitignore
+# ---------------------------------------
+
+# Node.js dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Build outputs
+dist/
+build/
+dist-ssr/
+.netlify/
+.vercel/
+
+# Local / Environment files
+.env
+.env.*
+*.local
+*.tmp
+*.swp
+
+# Editor & OS junk
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Generated database or analytics files
+*.db
+*.sqlite
+*.json.bak
+
+# Log files
+logs/
+*.log
+
+# Ignore lockfiles from package managers you don't use
+# (Uncomment if you want to ignore them)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# Prevent accidental Netlify or Vercel local folders
+.netlify/
+.vercel/
