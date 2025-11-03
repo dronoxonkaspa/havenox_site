@@ -5,34 +5,30 @@ const socket = io("https://shavenox-backend.onrender.com", {
   transports: ["websocket", "polling"],
   reconnection: true,
   reconnectionAttempts: 5,
-  reconnectionDelay: 2000
+  reconnectionDelay: 2000,
 });
 
 export default function LiveTent() {
   const [events, setEvents] = useState([]);
 
   useEffect(() => {
-    socket.on("connect", () => {
-      setEvents((e) => [...e, { type: "system", text: "? Connected to HavenOx backend" }]);
-    });
-
-    socket.on("connect_error", (err) => {
-      setEvents((e) => [...e, { type: "error", text: `? Connection error: ${err.message}` }]);
-    });
-
-    socket.on("disconnect", () => {
-      setEvents((e) => [...e, { type: "system", text: "? Disconnected from backend" }]);
-    });
-
-    socket.on("transactionStatus", (data) => {
-      setEvents((e) => [...e, { type: "transaction", text: data?.status || "No status received" }]);
-    });
-
+    socket.on("connect", () =>
+      setEvents((e) => [...e, { type: "system", text: "? Connected" }])
+    );
+    socket.on("connect_error", (err) =>
+      setEvents((e) => [...e, { type: "error", text: `? ${err.message}` }])
+    );
+    socket.on("transactionStatus", (data) =>
+      setEvents((e) => [...e, { type: "tx", text: data?.status || "No status" }])
+    );
+    socket.on("disconnect", () =>
+      setEvents((e) => [...e, { type: "system", text: "? Disconnected" }])
+    );
     return () => {
       socket.off("connect");
       socket.off("connect_error");
-      socket.off("disconnect");
       socket.off("transactionStatus");
+      socket.off("disconnect");
     };
   }, []);
 
