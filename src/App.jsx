@@ -1,45 +1,15 @@
-import { Routes, Route } from "react-router-dom";
-import Navbar from "./components/Navbar";
-import Home from "./pages/Home";
-import Marketplace from "./pages/Marketplace";
-import Profile from "./pages/Profile";
-import About from "./pages/About";
-import FAQ from "./pages/FAQ";
-import Create from "./pages/Create";
-import Mint from "./pages/Mint";
-import LiveTent from "./pages/LiveTent";
-import CreateTent from "./pages/CreateTent";
-import TentStatus from "./pages/TentStatus";
-import JoinTent from "./pages/JoinTent";
-import "./index.css";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import CreateTent from "./pages/CreateTent.jsx";
+import LiveTent from "./components/LiveTent.jsx";
 
 export default function App() {
   return (
-    <div className="min-h-screen bg-[#00040A] text-[#C0C7C9]">
-      <Navbar />
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/marketplace" element={<Marketplace />} />
-          <Route path="/create" element={<Create />} />
-          <Route path="/mint" element={<Mint />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/faq" element={<FAQ />} />
-          <Route path="/create-tent" element={<CreateTent />} />
-          <Route path="/tent/live/:id" element={<LiveTent />} />
-          <Route path="/tent/status/:id" element={<TentStatus />} />
-          <Route path="/tent/:id" element={<JoinTent />} /> {/* ✅ Added */}
-        </Routes>
-      </main>
-
-      <footer className="text-center py-6 border-t border-[#00E8C8]/20 mt-10">
-        <p className="text-sm text-gray-500">
-          © {new Date().getFullYear()}{" "}
-          <span className="text-[#00FFA3] font-semibold">HavenOx</span>. All
-          rights reserved.
-        </p>
-      </footer>
-    </div>
+    <Router>
+      <Routes>
+        <Route path="/createtent" element={<CreateTent />} />
+        <Route path="/livetent" element={<LiveTent />} />
+        <Route path="*" element={<h2 style={{color:"white"}}>404 � Page Not Found</h2>} />
+      </Routes>
+    </Router>
   );
 }
