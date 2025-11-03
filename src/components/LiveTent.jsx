@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { io } from "socket.io-client";
 
 const socket = io("https://shavenox-backend.onrender.com", {
-  transports: ["websocket", "polling"],
+  transports: ["polling"],
   reconnection: true,
   reconnectionAttempts: 5,
   reconnectionDelay: 2000,
