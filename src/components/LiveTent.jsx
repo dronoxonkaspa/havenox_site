@@ -2,7 +2,10 @@ import { useEffect, useState } from "react";
 import { io } from "socket.io-client";
 
 const socket = io("https://shavenox-backend.onrender.com", {
-  transports: ["websocket"],
+  transports: ["websocket", "polling"],
+  reconnection: true,
+  reconnectionAttempts: 5,
+  reconnectionDelay: 2000
 });
 
 export default function LiveTent() {
@@ -13,42 +16,37 @@ export default function LiveTent() {
       setEvents((e) => [...e, { type: "system", text: "? Connected to HavenOx backend" }]);
     });
 
-    socket.on("transactionStatus", (data) => {
-      const status = data?.status || "No status received";
-      setEvents((e) => [...e, { type: "transaction", text: status }]);
-    });
-
-    socket.on("chatMessage", (data) => {
-      const sender = data?.sender || "Unknown";
-      const message = data?.message || "";
-      setEvents((e) => [...e, { type: "chat", text: `${sender}: ${message}` }]);
+    socket.on("connect_error", (err) => {
+      setEvents((e) => [...e, { type: "error", text: `? Connection error: ${err.message}` }]);
     });
 
     socket.on("disconnect", () => {
       setEvents((e) => [...e, { type: "system", text: "? Disconnected from backend" }]);
     });
 
+    socket.on("transactionStatus", (data) => {
+      setEvents((e) => [...e, { type: "transaction", text: data?.status || "No status received" }]);
+    });
+
     return () => {
       socket.off("connect");
-      socket.off("transactionStatus");
-      socket.off("chatMessage");
+      socket.off("connect_error");
       socket.off("disconnect");
+      socket.off("transactionStatus");
     };
   }, []);
 
   return (
     <div style={{ padding: "1rem", color: "white" }}>
       <h2>?? Live Tent Activity</h2>
-      <div
-        style={{
+      <div style={{
           border: "1px solid #00f0ff",
           background: "rgba(0, 0, 0, 0.3)",
           padding: "1rem",
           borderRadius: "8px",
           height: "400px",
-          overflowY: "auto",
-        }}
-      >
+          overflowY: "auto"
+      }}>
         {events.map((e, i) => (
           <div key={i}>
             <strong>{e.type.toUpperCase()}:</strong> {e.text}
