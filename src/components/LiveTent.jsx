@@ -1,32 +1,29 @@
 import { useEffect, useState } from "react";
 import { io } from "socket.io-client";
 
-const socket = io("https://shavenox-backend.onrender.com", {
-  transports: ["polling"],
-  reconnection: true,
-  reconnectionAttempts: 5,
-  reconnectionDelay: 2000,
+const socket = io("https://backend-blue-bush-3995.fly.dev", {
+  transports: ["websocket"],
 });
 
 export default function LiveTent() {
   const [events, setEvents] = useState([]);
 
   useEffect(() => {
-    socket.on("connect", () =>
-      setEvents((e) => [...e, { type: "system", text: "? Connected" }])
-    );
-    socket.on("connect_error", (err) =>
-      setEvents((e) => [...e, { type: "error", text: `? ${err.message}` }])
-    );
-    socket.on("transactionStatus", (data) =>
-      setEvents((e) => [...e, { type: "tx", text: data?.status || "No status" }])
-    );
-    socket.on("disconnect", () =>
-      setEvents((e) => [...e, { type: "system", text: "? Disconnected" }])
-    );
+    socket.on("connect", () => {
+      setEvents((e) => [...e, { type: "system", text: "? Connected to HavenOx backend" }]);
+    });
+
+    socket.on("transactionStatus", (data) => {
+      const status = data?.status || "No status received";
+      setEvents((e) => [...e, { type: "transaction", text: status }]);
+    });
+
+    socket.on("disconnect", () => {
+      setEvents((e) => [...e, { type: "system", text: "? Disconnected from backend" }]);
+    });
+
     return () => {
       socket.off("connect");
-      socket.off("connect_error");
       socket.off("transactionStatus");
       socket.off("disconnect");
     };
