@@ -1,6 +1,6 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
-import "../styles/cyberpunk.css";
+import "../../styles/cyberpunk.css";
 
 export default function Navbar() {
   return (
