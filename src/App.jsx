@@ -20,3 +20,5 @@ export default function App() {
     </Router>
   );
 }
+
+import './styles/havenox.css';

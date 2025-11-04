@@ -1,5 +1,5 @@
 import React from "react";
-import "../../../styles/havenox.css";
+import "../../../../styles/havenox.css";
 
 export default function Footer() {
   return (

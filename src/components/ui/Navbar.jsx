@@ -1,6 +1,6 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
-import "../../../styles/havenox.css";
+import "../../../../styles/havenox.css";
 
 export default function Navbar() {
   return (
