@@ -12,7 +12,7 @@ export default function CreateTent() {
 
   useEffect(() => {
     if (window.kasware) {
-      window.kasware.request({ method: "kas_accounts" }).then(acc => {
+      (window?.kasware?.request || (() => Promise.reject(new Error("KasWare not found"))))({ method: "kas_accounts" }).then(acc => {
         if (acc?.[0]) {
           setWallet(acc[0]);
           setCreator(acc[0]);
@@ -44,7 +44,7 @@ export default function CreateTent() {
         throw new Error("KasWare wallet not found");
 
       const message = "verify ownership of " + nftId;
-      const signature = await window.kasware.request({
+      const signature = await (window?.kasware?.request || (() => Promise.reject(new Error("KasWare not found"))))({
         method: "kas_signMessage",
         params: { message, account: wallet },
       });

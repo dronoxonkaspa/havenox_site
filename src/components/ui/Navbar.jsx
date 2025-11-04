@@ -7,15 +7,20 @@ export default function Navbar() {
 
   const connectWallet = async () => {
     try {
-      if (!window.kasware) {
-        alert("KasWare wallet not detected. Please install the KasWare extension.");
+      if (typeof window === "undefined" || !window.kasware) {
+        alert("KasWare wallet not detected. Please install the KasWare browser extension.");
         return;
       }
+
       const accounts = await window.kasware.request({ method: "kas_requestAccounts" });
-      setWalletAddress(accounts[0]);
+      if (accounts && accounts[0]) {
+        setWalletAddress(accounts[0]);
+      } else {
+        alert("No KasWare accounts found.");
+      }
     } catch (err) {
       console.error("KasWare connect error:", err);
-      alert("Failed to connect wallet.");
+      alert("Failed to connect wallet. Check KasWare permissions.");
     }
   };
 
