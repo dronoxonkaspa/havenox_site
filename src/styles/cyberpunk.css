@@ -1,0 +1,86 @@
+body {
+  margin: 0;
+  background: radial-gradient(ellipse at bottom, #0a0a0f 0%, #000 100%);
+  overflow-x: hidden;
+  color: #fff;
+  font-family: "Orbitron", sans-serif;
+  height: 100vh;
+}
+
+.cyber-navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 3rem;
+  background: rgba(10,10,20,0.6);
+  border-bottom: 1px solid rgba(0,255,255,0.3);
+  backdrop-filter: blur(10px);
+}
+
+.cyber-navbar .logo {
+  font-size: 1.5rem;
+  color: cyan;
+  text-shadow: 0 0 10px cyan;
+}
+
+.cyber-navbar ul {
+  list-style: none;
+  display: flex;
+  gap: 2rem;
+}
+
+.cyber-navbar a {
+  color: #ccc;
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.3s ease, text-shadow 0.3s ease;
+}
+
+.cyber-navbar a:hover {
+  color: cyan;
+  text-shadow: 0 0 8px cyan;
+}
+
+.hero-section {
+  text-align: center;
+  margin-top: 15vh;
+}
+
+.glow-title {
+  font-size: 3rem;
+  color: cyan;
+  text-shadow: 0 0 20px cyan, 0 0 40px blue;
+}
+
+.glow-title span {
+  color: magenta;
+  text-shadow: 0 0 20px magenta, 0 0 40px purple;
+}
+
+.subtitle {
+  color: #bbb;
+  font-size: 1.2rem;
+  margin-top: 1rem;
+}
+
+.cyber-footer {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  text-align: center;
+  background: rgba(20,20,30,0.5);
+  border-top: 1px solid rgba(0,255,255,0.2);
+  padding: 0.5rem 0;
+}
+
+@keyframes dust {
+  from { transform: translateY(0) scale(1); opacity: 0.5; }
+  to { transform: translateY(-100vh) scale(1.5); opacity: 0; }
+}
+
+.particle {
+  position: absolute;
+  background: cyan;
+  border-radius: 50%;
+  animation: dust 12s linear infinite;
+}
