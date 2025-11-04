@@ -117,3 +117,5 @@ body {
 }
 
 .connect-btn{background:linear-gradient(90deg,#00f6ff,#ff00e6);border:none;color:white;padding:0.5rem 1rem;border-radius:10px;cursor:pointer;transition:.3s;font-weight:600;}.connect-btn:hover{box-shadow:0 0 15px cyan,0 0 25px magenta;}
+
+.verified-glow{box-shadow:0 0 25px cyan,0 0 50px #00ffff80;animation:pulse 2s infinite alternate;}@keyframes pulse{from{box-shadow:0 0 10px #00ffff80;}to{box-shadow:0 0 40px #ff00e6;}}.nft-preview img{max-width:100%;border-radius:10px;box-shadow:0 0 15px #00ffff60;}.nft-preview h3{color:cyan;text-shadow:0 0 8px #00ffff;}.nft-preview p{color:#ccc;font-size:0.9rem;}
