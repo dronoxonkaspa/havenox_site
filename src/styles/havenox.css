@@ -1,0 +1,117 @@
+/* =======================
+   HAVENOX CYBER-CINEMATIC THEME
+   ======================= */
+:root {
+  --kaspa-blue: #00f6ff;
+  --cyber-magenta: #ff00e6;
+  --dark-bg: #050510;
+  --glass: rgba(255, 255, 255, 0.05);
+  --glow: 0 0 15px var(--kaspa-blue), 0 0 30px var(--cyber-magenta);
+}
+
+body {
+  margin: 0;
+  font-family: "Orbitron", "Rajdhani", sans-serif;
+  background: radial-gradient(circle at 20% 20%, #0a0a18 0%, #000 100%);
+  color: white;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+.cyber-bg {
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(120deg, rgba(0,255,255,0.05), rgba(255,0,255,0.05));
+  animation: shift 15s linear infinite alternate;
+  z-index: -1;
+}
+
+@keyframes shift {
+  from { transform: translateX(-10%) translateY(-5%); }
+  to { transform: translateX(10%) translateY(5%); }
+}
+
+.create-tent-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 5vh 2rem;
+}
+
+.tent-card {
+  background: var(--glass);
+  border: 1px solid rgba(0,255,255,0.2);
+  box-shadow: 0 0 25px rgba(0,255,255,0.15);
+  backdrop-filter: blur(12px);
+  padding: 2rem;
+  width: 400px;
+  border-radius: 20px;
+  transition: all 0.3s ease-in-out;
+}
+
+.tent-card:hover {
+  box-shadow: 0 0 40px rgba(0,255,255,0.5);
+  transform: translateY(-5px);
+}
+
+.tent-card h2 {
+  text-align: center;
+  text-transform: uppercase;
+  color: var(--kaspa-blue);
+  text-shadow: var(--glow);
+  margin-bottom: 1.5rem;
+}
+
+.tent-input {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.2);
+  color: white;
+  padding: 0.7rem;
+  width: 100%;
+  margin-bottom: 1rem;
+  border-radius: 10px;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.tent-input:focus {
+  border-color: var(--kaspa-blue);
+  box-shadow: 0 0 10px var(--kaspa-blue);
+}
+
+.upload-zone {
+  border: 1px dashed rgba(0,255,255,0.3);
+  padding: 1rem;
+  border-radius: 10px;
+  text-align: center;
+  margin-bottom: 1rem;
+  color: #ccc;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.upload-zone:hover {
+  background: rgba(0,255,255,0.1);
+  border-color: var(--cyber-magenta);
+}
+
+.create-btn {
+  background: linear-gradient(90deg, var(--kaspa-blue), var(--cyber-magenta));
+  border: none;
+  color: #fff;
+  padding: 0.8rem;
+  border-radius: 8px;
+  cursor: pointer;
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 1px;
+  transition: all 0.3s ease;
+  width: 100%;
+}
+
+.create-btn:hover {
+  box-shadow: var(--glow);
+  transform: scale(1.03);
+}
