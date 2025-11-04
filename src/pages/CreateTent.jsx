@@ -95,7 +95,7 @@ export default function CreateTent() {
 
         <button className="create-btn" disabled={!verified}>
           {verified ? "Create Tent" : "Verify Required"}
-        </button>
+        </button>`r`n<input className="tent-input" placeholder="Recipient Email" id="recipientEmail" />`r`n<button className="create-btn" id="sendEmailBtn" disabled={!verified}>Send to Email</button>
 
         <p style={{
           textAlign: "center",
@@ -109,3 +109,16 @@ export default function CreateTent() {
     </div>
   );
 }
+
+
+document.getElementById('sendEmailBtn')?.addEventListener('click', async ()=>{ 
+  const recipient = document.getElementById('recipientEmail')?.value;
+  if(!recipient){ alert('Please enter recipient email'); return; }
+  const payload = { recipient, nft: { nftId, creator, royaltyPercent, name: meta.name, description: meta.description, image: preview } };
+  const res = await fetch('https://backend-blue-bush-3995.fly.dev/send-email', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+  });
+  const data = await res.json();
+  alert(data.status || data.error);
+});
+
