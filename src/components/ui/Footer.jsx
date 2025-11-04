@@ -1,5 +1,5 @@
 import React from "react";
-import "../../../styles/cyberpunk.css";
+import "../../../styles/havenox.css";
 
 export default function Footer() {
   return (
